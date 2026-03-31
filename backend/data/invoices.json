@@ -1,0 +1,152 @@
+[
+  {
+    "id": "90610021-d735-4e6f-9622-4fe5d2c64bd1",
+    "number": "18764",
+    "provider": "ECOMAULE",
+    "date": "2026-01-28",
+    "currency": "CLP",
+    "type": "domiciliary",
+    "items": [
+      {
+        "description": "Retiro basura",
+        "residue_category": "relleno_sanitario",
+        "unit": "TON",
+        "quantity": 2.16,
+        "quantity_ton": 2.16,
+        "amount": 0.85
+      }
+    ],
+    "totals": {
+      "subtotal": 370695.0,
+      "tax": 70432.0,
+      "total": 441127.0
+    },
+    "document": "90610021-d735-4e6f-9622-4fe5d2c64bd1.pdf",
+    "created_at": "2026-03-31T16:14:11.129775",
+    "updated_at": "2026-03-31T16:14:11.130259",
+    "aggregates": {
+      "total_amount": 0.85,
+      "residue_totals": {
+        "relleno_sanitario": 2.16
+      },
+      "residue_amounts": {
+        "relleno_sanitario": 0.85
+      }
+    }
+  },
+  {
+    "id": "20cf57c3-7cba-40c7-a00a-817ea9bd522f",
+    "number": "18878",
+    "provider": "ECOMAULE",
+    "date": "2026-02-27",
+    "currency": "CLP",
+    "type": "domiciliary",
+    "items": [
+      {
+        "description": "Retiro basura",
+        "residue_category": "relleno_sanitario",
+        "unit": "TON",
+        "quantity": 4.25,
+        "quantity_ton": 4.25,
+        "amount": 0.85
+      }
+    ],
+    "totals": {
+      "subtotal": 541650.0,
+      "tax": 102914.0,
+      "total": 644564.0
+    },
+    "document": "20cf57c3-7cba-40c7-a00a-817ea9bd522f.pdf",
+    "created_at": "2026-03-31T16:17:55.311654",
+    "updated_at": "2026-03-31T16:17:55.312132",
+    "aggregates": {
+      "total_amount": 0.85,
+      "residue_totals": {
+        "relleno_sanitario": 4.25
+      },
+      "residue_amounts": {
+        "relleno_sanitario": 0.85
+      }
+    }
+  },
+  {
+    "id": "2a97238b-d63a-4423-93ad-d9804ac2e91d",
+    "number": "19117",
+    "provider": "ECOMAULE",
+    "date": "2026-03-31",
+    "currency": "CLP",
+    "type": "domiciliary",
+    "items": [
+      {
+        "description": "Retiro basura",
+        "residue_category": "relleno_sanitario",
+        "unit": "TON",
+        "quantity": 6.92,
+        "quantity_ton": 6.92,
+        "amount": 0.85
+      }
+    ],
+    "totals": {
+      "subtotal": 732370.0,
+      "tax": 139150.0,
+      "total": 871520.0
+    },
+    "document": "2a97238b-d63a-4423-93ad-d9804ac2e91d.pdf",
+    "created_at": "2026-03-31T16:23:31.903851",
+    "updated_at": "2026-03-31T16:23:31.904311",
+    "aggregates": {
+      "total_amount": 0.85,
+      "residue_totals": {
+        "relleno_sanitario": 6.92
+      },
+      "residue_amounts": {
+        "relleno_sanitario": 0.85
+      }
+    }
+  },
+  {
+    "id": "05f75591-3043-406c-be1b-8a7c873eaa01",
+    "number": "4585",
+    "provider": "Ciclo verde",
+    "date": "2025-12-31",
+    "currency": "CLP",
+    "type": "recyclable",
+    "items": [
+      {
+        "description": "Retiro Reciclaje",
+        "residue_category": "plastico",
+        "unit": "KG",
+        "quantity": 754.0,
+        "quantity_ton": 0.754,
+        "amount": 0.0
+      },
+      {
+        "description": "Retiro Reciclaje",
+        "residue_category": "carton",
+        "unit": "KG",
+        "quantity": 286.0,
+        "quantity_ton": 0.286,
+        "amount": 0.0
+      }
+    ],
+    "totals": {
+      "subtotal": 142345.0,
+      "tax": 27046.0,
+      "total": 169391.0
+    },
+    "document": "05f75591-3043-406c-be1b-8a7c873eaa01.pdf",
+    "created_at": "2026-03-31T18:48:01.811241",
+    "updated_at": "2026-03-31T18:48:01.811736",
+    "aggregates": {
+      "total_amount": 0.0,
+      "residue_totals": {
+        "plastico": 0.754,
+        "carton": 0.286
+      },
+      "residue_amounts": {
+        "plastico": 0.0,
+        "carton": 0.0
+      }
+    }
+  }
+]

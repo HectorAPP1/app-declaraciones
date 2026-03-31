@@ -1,0 +1,92 @@
+from pathlib import Path
+from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
+
+from repositories.local_json_repo import LocalInvoiceRepository
+from services.invoice_service import InvoiceService
+from storage.file_manager import FileManager
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    CORS(app)
+
+    base_dir = Path(__file__).resolve().parent
+    data_dir = base_dir / "data"
+    documents_dir = data_dir / "documents"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    documents_dir.mkdir(parents=True, exist_ok=True)
+
+    repository = LocalInvoiceRepository(data_dir / "invoices.json")
+    file_manager = FileManager(documents_dir)
+    service = InvoiceService(repository, file_manager)
+
+    @app.errorhandler(ValueError)
+    def handle_value_error(error: ValueError):
+        return jsonify({"error": str(error)}), 400
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error: Exception):
+        if isinstance(error, HTTPException):
+            return jsonify({"error": error.description}), error.code
+        app.logger.exception("Unhandled server error")
+        return jsonify({"error": "Internal server error"}), 500
+
+    @app.route("/api/health", methods=["GET"])
+    def health_check() -> tuple:
+        return jsonify({"status": "ok"}), 200
+
+    @app.route("/api/invoices", methods=["GET"])
+    def list_invoices() -> tuple:
+        filters = {
+            "type": request.args.get("type"),
+            "year": request.args.get("year"),
+            "month": request.args.get("month"),
+        }
+        invoices = service.list_invoices(filters)
+        return jsonify(invoices), 200
+
+    @app.route("/api/invoices", methods=["POST"])
+    def create_invoice() -> tuple:
+        invoice_data = request.get_json(force=True)
+        invoice = service.create_invoice(invoice_data)
+        return jsonify(invoice), 201
+
+    @app.route("/api/invoices/<invoice_id>", methods=["PUT"])
+    def update_invoice(invoice_id: str) -> tuple:
+        invoice_data = request.get_json(force=True)
+        updated = service.update_invoice(invoice_id, invoice_data)
+        return jsonify(updated), 200
+
+    @app.route("/api/invoices/<invoice_id>", methods=["DELETE"])
+    def delete_invoice(invoice_id: str) -> tuple:
+        service.delete_invoice(invoice_id)
+        return "", 204
+
+    @app.route("/api/invoices/<invoice_id>/document", methods=["POST"])
+    def upload_document(invoice_id: str) -> tuple:
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        file = request.files["file"]
+        document_info = service.attach_document(invoice_id, file)
+        return jsonify(document_info), 201
+
+    @app.route("/api/invoices/<invoice_id>/document", methods=["GET"])
+    def download_document(invoice_id: str):
+        file_path = service.get_document(invoice_id)
+        if not file_path:
+            return jsonify({"error": "Document not found"}), 404
+        return send_file(file_path, as_attachment=True)
+
+    @app.route("/api/analytics", methods=["GET"])
+    def analytics() -> tuple:
+        year = request.args.get("year")
+        data = service.get_analytics(year)
+        return jsonify(data), 200
+
+    return app
+
+
+if __name__ == "__main__":
+    create_app().run(debug=True)
