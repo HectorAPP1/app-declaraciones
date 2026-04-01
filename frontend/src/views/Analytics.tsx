@@ -24,20 +24,21 @@ const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep
 
 export default function AnalyticsView() {
   const [focus, setFocus] = useState('combined')
+  const [year, setYear] = useState(new Date().getFullYear().toString())
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const res = await api.getAnalytics()
+      const res = await api.getAnalytics(year)
       setData(res)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [year])
 
   const combinedMonthly = useMemo(() => {
     if (!data) return []
@@ -88,6 +89,20 @@ export default function AnalyticsView() {
           <p className="text-slate-500 text-sm mt-1 leading-relaxed">Tendencias en gastos y toneladas entre residuos domiciliarios y reciclables con diseño unificado.</p>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-600">Año</span>
+            <Select value={year} onValueChange={(v) => v && setYear(v)}>
+              <SelectTrigger className="w-[120px] bg-white h-9">
+                <SelectValue placeholder="Año" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({length: 5}).map((_, i) => {
+                  const y = (new Date().getFullYear() - i).toString()
+                  return <SelectItem key={y} value={y}>{y}</SelectItem>
+                })}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-slate-600">Enfoque</span>
             <Select value={focus} onValueChange={(v) => v && setFocus(v)}>
