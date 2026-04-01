@@ -51,8 +51,8 @@ export default function AnalyticsView() {
 
   const historicalData = useMemo(() => {
     if (!data?.historical) return []
-    const currentYear = new Date().getFullYear()
-    const targetYears = [currentYear - 2, currentYear - 1, currentYear]
+    const selectedYear = parseInt(year)
+    const targetYears = [selectedYear - 2, selectedYear - 1, selectedYear]
     
     return targetYears.map(y => {
       const found = data.historical.find(h => h.name === String(y))
