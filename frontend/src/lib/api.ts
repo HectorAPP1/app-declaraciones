@@ -1,9 +1,10 @@
 // ─── EcoMetrics API client ────────────────────────────────────────────────────
-// Calls Flask backend at /api (proxied by Vite in dev, same-origin in prod).
+// In dev: calls /api proxied by Vite to localhost:5000
+// In prod: calls VITE_API_URL (set in Vercel env vars)
 
 import type { AnalyticsData, CreateInvoicePayload, Invoice } from './types'
 
-const BASE = '/api'
+const BASE = (import.meta.env.VITE_API_URL ?? '/api') as string
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(BASE + path, {
