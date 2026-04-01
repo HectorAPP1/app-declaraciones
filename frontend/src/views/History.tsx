@@ -105,12 +105,10 @@ function RowMenu({ invoice, onUpdate, onDelete, onViewDetail }: {
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
-          </svg>
-        </Button>
+      <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-slate-400 hover:bg-slate-100 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52 z-50">
         <DropdownMenuItem className="cursor-pointer text-slate-700" onClick={() => onViewDetail(invoice)}>

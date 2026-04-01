@@ -189,7 +189,7 @@ export default function AnalyticsView() {
                       outerRadius={80}
                       paddingAngle={2}
                     >
-                      {categories.map((entry, index) => (
+                      {categories.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                       ))}
                     </Pie>
