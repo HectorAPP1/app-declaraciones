@@ -9,8 +9,9 @@ build/
 # Virtual environment
 backend/.venv/
 
-# Data (documentos reales subidos por usuarios)
+# Data (documentos reales subidos por usuarios y datos locales)
 backend/data/documents/
+backend/data/invoices.json
 
 # OS
 .DS_Store
