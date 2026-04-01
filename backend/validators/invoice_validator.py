@@ -112,4 +112,11 @@ def validate_invoice_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "items": normalized_items,
         "totals": totals,
         "document": payload.get("document"),
+        # Compliance tracking fields
+        "payment_status": payload.get("payment_status"),
+        "payment_note": payload.get("payment_note"),
+        "sinader_status": payload.get("sinader_status"),
+        "sinader_note": payload.get("sinader_note"),
+        "sinader_folio": payload.get("sinader_folio"),
+        "created_at": payload.get("created_at"),
     }

@@ -76,6 +76,30 @@ class InvoiceService:
         return str(file_path) if file_path.exists() else None
 
     def _build_invoice(self, data: Dict[str, Any], invoice_id: Optional[str] = None) -> Dict[str, Any]:
+        now = datetime.utcnow()
+        issue_date = None
+        try:
+            issue_date = datetime.fromisoformat(data.get("date", ""))
+        except (ValueError, TypeError):
+            pass
+
+        # Auto-calculate compliance deadlines if not provided
+        def _payment_status_default():
+            if not issue_date:
+                return "pending"
+            days = (now - issue_date).days
+            if days > 30:
+                return "overdue"
+            return "pending"
+
+        def _sinader_status_default():
+            if not issue_date:
+                return "pending"
+            days = (now - issue_date).days
+            if days > 10:
+                return "overdue"
+            return "pending"
+
         invoice = {
             "id": invoice_id or str(uuid.uuid4()),
             "number": data.get("number"),
@@ -86,12 +110,19 @@ class InvoiceService:
             "items": data.get("items", []),
             "totals": data.get("totals", {}),
             "document": data.get("document"),
-            "created_at": data.get("created_at") or datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            # Compliance tracking fields
+            "payment_status": data.get("payment_status") or _payment_status_default(),
+            "payment_note": data.get("payment_note", ""),
+            "sinader_status": data.get("sinader_status") or _sinader_status_default(),
+            "sinader_note": data.get("sinader_note", ""),
+            "sinader_folio": data.get("sinader_folio", ""),
+            "created_at": data.get("created_at") or now.isoformat(),
+            "updated_at": now.isoformat(),
         }
         self._validate(invoice)
         invoice["aggregates"] = self._compute_aggregates(invoice["items"])
         return invoice
+
 
     def get_analytics(self, year: Optional[str] = None) -> Dict[str, Any]:
         target_year = None
@@ -109,6 +140,8 @@ class InvoiceService:
             key: {"label": label, "amount": 0.0, "tons": 0.0}
             for key, label in RECYCLABLE_RESIDUES.items()
         }
+        
+        historical = {} # year -> totals
 
         for invoice in invoices:
             date_str = invoice.get("date")
@@ -118,11 +151,22 @@ class InvoiceService:
                 dt = datetime.fromisoformat(date_str)
             except ValueError:
                 continue
-            if target_year and dt.year != target_year:
-                continue
 
+            # Historical tracking (all years)
+            y = dt.year
+            if y not in historical:
+                historical[y] = {"domiciliario": 0.0, "reciclable": 0.0}
+            
             invoice_type = invoice.get("type", "domiciliary")
             amount = self._invoice_amount(invoice)
+            
+            if invoice_type == "domiciliary":
+                historical[y]["domiciliario"] += amount
+            else:
+                historical[y]["reciclable"] += amount
+
+            if target_year and dt.year != target_year:
+                continue
             aggregates = invoice.get("aggregates") or {}
             residue_totals = aggregates.get("residue_totals") or {}
             residue_amounts = aggregates.get("residue_amounts")
@@ -154,6 +198,15 @@ class InvoiceService:
                     rec_categories[category]["tons"] += tons_value
                     rec_categories[category]["amount"] += float(resolved_amounts.get(category, 0.0))
 
+        historical_list = [
+            {
+                "name": str(y), 
+                "domiciliario": data["domiciliario"], 
+                "reciclable": data["reciclable"]
+            }
+            for y, data in sorted(historical.items())
+        ]
+
         return {
             "year": target_year,
             "domiciliary": {
@@ -165,6 +218,7 @@ class InvoiceService:
                 "totals": rec_totals,
                 "categories": self._categories_list(rec_categories),
             },
+            "historical": historical_list,
         }
 
     def _compute_aggregates(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:

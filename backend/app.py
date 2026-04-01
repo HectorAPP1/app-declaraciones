@@ -77,7 +77,7 @@ def create_app() -> Flask:
         file_path = service.get_document(invoice_id)
         if not file_path:
             return jsonify({"error": "Document not found"}), 404
-        return send_file(file_path, as_attachment=True)
+        return send_file(file_path, mimetype='application/pdf')
 
     @app.route("/api/analytics", methods=["GET"])
     def analytics() -> tuple:

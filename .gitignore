@@ -17,6 +17,11 @@ backend/data/documents/
 Thumbs.db
 desktop.ini
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
 # IDE
 .vscode/
 .idea/

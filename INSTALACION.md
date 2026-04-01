@@ -1,6 +1,6 @@
 # Guía de instalación paso a paso — PC nuevo
 
-Esta guía asume que acabas de encender tu otro PC (Windows) y necesitas dejar la app corriendo desde cero.
+Esta guía asume que acabas de encender un PC con Windows y necesitas dejar la app corriendo desde cero.
 
 ---
 
@@ -11,13 +11,23 @@ Esta guía asume que acabas de encender tu otro PC (Windows) y necesitas dejar l
 1. Descarga el instalador desde <https://www.python.org/downloads/>.
 2. Al ejecutar el instalador **marca la casilla "Add python.exe to PATH"** (muy importante).
 3. Haz clic en **Install Now**.
-4. Verifica en una terminal (PowerShell o CMD):
+4. Verifica en PowerShell:
    ```powershell
-   python --version   # debería mostrar Python 3.1x.x
+   python --version   # debe mostrar Python 3.1x.x
    pip --version
    ```
 
-### 1.2 Git
+### 1.2 Node.js 18+
+
+1. Descarga el instalador LTS desde <https://nodejs.org/>.
+2. Instala con las opciones por defecto (incluye npm automáticamente).
+3. Verifica:
+   ```powershell
+   node --version   # v18.x.x o superior
+   npm --version
+   ```
+
+### 1.3 Git
 
 1. Descarga desde <https://git-scm.com/download/win>.
 2. Instala con las opciones por defecto.
@@ -26,136 +36,141 @@ Esta guía asume que acabas de encender tu otro PC (Windows) y necesitas dejar l
    git --version
    ```
 
-> **Opcional**: si prefieres una interfaz gráfica, instala [GitHub Desktop](https://desktop.github.com/).
-
 ---
 
 ## 2. Clonar el repositorio
 
-Abre una terminal y ejecuta:
-
 ```powershell
 cd ~\Desktop
-git clone https://github.com/<tu-usuario>/app-ambiental.git
-cd app-ambiental
+git clone https://github.com/<tu-usuario>/app-declaraciones.git
+cd app-declaraciones
 ```
-
-Esto creará la carpeta `app-ambiental` en tu escritorio con todo el código.
 
 ---
 
-## 3. Levantar el backend (Flask)
+## 3. Levantar el proyecto
 
-### 3.1 Crear entorno virtual e instalar dependencias
+### Opción A — Script automático (recomendado)
+
+Desde la carpeta raíz del proyecto ejecuta:
 
 ```powershell
-cd backend
+.\start_dev.ps1
+```
+
+Esto abre dos terminales automáticamente:
+- Una con el servidor Flask en `http://127.0.0.1:5000`
+- Otra con el servidor Vite en `http://localhost:5173`
+
+Abre `http://localhost:5173` en el navegador y listo.
+
+---
+
+### Opción B — Manual (dos terminales)
+
+**Terminal 1 — Backend (Flask)**
+
+```powershell
+cd ~\Desktop\app-declaraciones\backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-> Si ves `(.venv)` al inicio de la línea del terminal, el entorno está activo.
-
-### 3.2 Iniciar el servidor
-
-```powershell
 python -m flask --app app:create_app --debug run
 ```
 
-Deberías ver algo como:
-
+Deberías ver:
 ```
  * Running on http://127.0.0.1:5000
 ```
 
-**No cierres esta terminal.** El backend necesita seguir corriendo.
+Verifica que funciona abriendo `http://127.0.0.1:5000/api/health` — debe mostrar `{"status":"ok"}`.
 
-### 3.3 Verificar que funciona
-
-Abre el navegador y visita:
-
-```
-http://127.0.0.1:5000/api/health
-```
-
-Deberías ver `{"status":"ok"}`.
+**No cierres esta terminal.**
 
 ---
 
-## 4. Levantar el frontend
-
-Abre **otra terminal** (deja la del backend abierta) y ejecuta:
+**Terminal 2 — Frontend (Vite + React)**
 
 ```powershell
-cd ~\Desktop\app-ambiental\frontend
-python -m http.server 4173
+cd ~\Desktop\app-declaraciones\frontend
+npm install        # solo la primera vez, instala las dependencias
+npm run dev
 ```
 
-Luego abre en el navegador:
-
+Deberías ver:
 ```
-http://localhost:4173
+  VITE v8.x.x  ready in xxx ms
+  ➜  Local:   http://localhost:5173/
 ```
 
-¡Listo! Ya tienes la app funcionando.
+Abre `http://localhost:5173` en el navegador.
 
 ---
 
-## 5. Resumen de terminales
+## 4. Resumen de terminales
 
-| Terminal | Carpeta                         | Comando                                              |
-|----------|---------------------------------|------------------------------------------------------|
-| 1        | `app-ambiental\backend`         | `.venv\Scripts\activate` → `python -m flask --app app:create_app --debug run` |
-| 2        | `app-ambiental\frontend`        | `python -m http.server 4173`                         |
+| Terminal | Carpeta                              | Comandos                                                              |
+|----------|--------------------------------------|-----------------------------------------------------------------------|
+| 1        | `app-declaraciones\backend`          | `.venv\Scripts\activate` → `python -m flask --app app:create_app --debug run` |
+| 2        | `app-declaraciones\frontend`         | `npm run dev`                                                         |
+
+> El frontend se comunica con el backend a través de un proxy Vite configurado en `vite.config.ts`. No necesitas cambiar ninguna URL.
 
 ---
 
-## 6. Uso diario (cuando vuelvas a abrir el PC)
+## 5. Uso diario (cuando vuelvas a abrir el PC)
 
-Cada vez que quieras usar la app solo necesitas repetir los pasos 3.2 y 4:
+Solo repite los comandos de inicio (no necesitas reinstalar nada):
 
 ```powershell
-# Terminal 1 — backend
-cd ~\Desktop\app-ambiental\backend
+# Opción rápida
+.\start_dev.ps1
+
+# O manualmente:
+
+# Terminal 1
+cd ~\Desktop\app-declaraciones\backend
 .venv\Scripts\activate
 python -m flask --app app:create_app --debug run
 
-# Terminal 2 — frontend
-cd ~\Desktop\app-ambiental\frontend
-python -m http.server 4173
+# Terminal 2
+cd ~\Desktop\app-declaraciones\frontend
+npm run dev
 ```
-
-No necesitas volver a instalar dependencias ni crear el venv; ya está todo ahí.
 
 ---
 
-## 7. Solución de problemas comunes
+## 6. Solución de problemas comunes
 
 | Problema | Solución |
 |----------|----------|
 | `python` no se reconoce | Reinstala Python marcando "Add to PATH", o usa `py` en lugar de `python`. |
-| El puerto 5000 ya está en uso | Ejecuta `python -m flask --app app:create_app --debug run -p 5001` y actualiza `API_BASE` en `frontend/main.js`. |
-| El frontend no conecta con la API | Asegúrate de que la terminal del backend siga corriendo y que `API_BASE` en `main.js` apunte a `http://127.0.0.1:5000/api`. |
-| Error de permisos en `.venv` | Ejecuta PowerShell como administrador o usa CMD. |
+| `npm` no se reconoce | Reinstala Node.js desde nodejs.org. |
+| El puerto 5000 ya está en uso | Ejecuta Flask con `--port 5001` y actualiza el target en `frontend/vite.config.ts`. |
+| El frontend no conecta con la API | Asegúrate de que el backend siga corriendo en `:5000`. El proxy Vite reenvía `/api` automáticamente. |
+| Error de permisos en `.venv` | Ejecuta PowerShell como administrador. |
+| `npm install` falla | Borra `frontend/node_modules` y `frontend/package-lock.json` y vuelve a ejecutar `npm install`. |
 
 ---
 
-## 8. Actualizar el código desde GitHub
-
-Cuando hagas cambios en el otro PC y los subas a GitHub:
+## 7. Actualizar el código desde GitHub
 
 ```powershell
-cd ~\Desktop\app-ambiental
+cd ~\Desktop\app-declaraciones
 git pull origin main
 ```
 
 Si cambiaron dependencias del backend:
-
 ```powershell
 cd backend
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Luego reinicia el servidor Flask.
+Si cambiaron dependencias del frontend:
+```powershell
+cd frontend
+npm install
+```
+
+Luego reinicia ambos servidores.
