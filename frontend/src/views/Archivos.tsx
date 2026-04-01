@@ -364,7 +364,8 @@ export default function ArchivosView() {
             />
           </div>
           <Button
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm h-9 px-4 text-xs font-semibold"
+            variant="outline"
+            className="flex items-center gap-2 bg-white shadow-sm font-medium h-9 text-xs"
             onClick={() => setShowUploader(v => !v)}
           >
             <CloudArrowUpIcon className="w-4 h-4" />

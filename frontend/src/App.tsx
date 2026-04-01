@@ -87,7 +87,7 @@ export default function App() {
             {currentView === 'archivos' && 'Data Library'}
             {currentView === 'word-assistant' && 'Word Assistant AI'}
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90 text-white shadow-sm font-medium h-8 rounded-[6px] text-[13px] px-4 gap-1.5 flex items-center justify-center">
+          <Button variant="outline" onClick={() => setIsModalOpen(true)} className="bg-white shadow-sm font-medium h-9 text-xs flex items-center gap-1.5">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             Quick Create
           </Button>
