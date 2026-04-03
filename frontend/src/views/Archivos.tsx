@@ -266,7 +266,7 @@ export default function ArchivosView() {
 
       for (const inv of invoices) {
         const year = inv.date ? new Date(inv.date).getFullYear() : new Date().getFullYear()
-        const dateStr = new Date(inv.updated_at || inv.created_at || inv.date || Date.now()).toLocaleDateString('es-CL')
+        const dateStr = new Date(inv.date || inv.created_at || Date.now()).toLocaleDateString('es-CL')
         const isSinader = inv.provider.toUpperCase() === 'SINADER'
 
         // Invoice document
