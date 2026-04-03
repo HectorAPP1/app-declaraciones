@@ -11,8 +11,8 @@ class FileManager:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(self, invoice_id: str, file_storage) -> Path:
-        filename = f"{invoice_id}.pdf"
+    def save(self, invoice_id: str, file_storage, suffix: str = "") -> Path:
+        filename = f"{invoice_id}{suffix}.pdf"
         dest_path = self.base_dir / filename
         with dest_path.open("wb") as dest:
             file_storage.save(dest)
@@ -22,6 +22,7 @@ class FileManager:
         return self.base_dir / filename
 
     def delete(self, invoice_id: str) -> None:
-        path = self.base_dir / f"{invoice_id}.pdf"
-        if path.exists():
-            path.unlink()
+        for suffix in ("", "_cert"):
+            path = self.base_dir / f"{invoice_id}{suffix}.pdf"
+            if path.exists():
+                path.unlink()

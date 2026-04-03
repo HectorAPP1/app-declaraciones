@@ -69,12 +69,14 @@ def create_app() -> Flask:
         if "file" not in request.files:
             return jsonify({"error": "No file provided"}), 400
         file = request.files["file"]
-        document_info = service.attach_document(invoice_id, file)
+        doc_type = request.args.get("doc_type", "invoice")
+        document_info = service.attach_document(invoice_id, file, doc_type)
         return jsonify(document_info), 201
 
     @app.route("/api/invoices/<invoice_id>/document", methods=["GET"])
     def download_document(invoice_id: str):
-        file_path = service.get_document(invoice_id)
+        doc_type = request.args.get("doc_type", "invoice")
+        file_path = service.get_document(invoice_id, doc_type)
         if not file_path:
             return jsonify({"error": "Document not found"}), 404
         return send_file(file_path, mimetype='application/pdf')

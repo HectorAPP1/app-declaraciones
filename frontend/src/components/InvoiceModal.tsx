@@ -153,8 +153,8 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
       }
 
       const inv = await api.createInvoice(payload)
-      if (form.invoiceFile) await api.uploadDocument(inv.id, form.invoiceFile)
-      if (form.certFile) await api.uploadDocument(inv.id, form.certFile)
+      if (form.invoiceFile) await api.uploadDocument(inv.id, form.invoiceFile, 'invoice')
+      if (form.certFile) await api.uploadDocument(inv.id, form.certFile, 'certificate')
 
       handleClose()
       window.location.reload()

@@ -57,22 +57,28 @@ class InvoiceService:
             raise ValueError("Invoice not found")
         self.file_manager.delete(invoice_id)
 
-    def attach_document(self, invoice_id: str, file_storage) -> Dict[str, Any]:
+    def attach_document(self, invoice_id: str, file_storage, doc_type: str = "invoice") -> Dict[str, Any]:
         invoice = self.repository.get(invoice_id)
         if not invoice:
             raise ValueError("Invoice not found")
-        document_path = self.file_manager.save(invoice_id, file_storage)
-        invoice["document"] = document_path.name
+        suffix = "_cert" if doc_type == "certificate" else ""
+        field = "certificate" if doc_type == "certificate" else "document"
+        document_path = self.file_manager.save(invoice_id, file_storage, suffix)
+        invoice[field] = document_path.name
         updated = self.repository.update(invoice_id, invoice)
         if not updated:
             raise ValueError("Failed to update invoice with document")
         return {"filename": document_path.name}
 
-    def get_document(self, invoice_id: str) -> Optional[str]:
+    def get_document(self, invoice_id: str, doc_type: str = "invoice") -> Optional[str]:
         invoice = self.repository.get(invoice_id)
-        if not invoice or not invoice.get("document"):
+        if not invoice:
             return None
-        file_path = self.file_manager.path_for(invoice["document"])
+        field = "certificate" if doc_type == "certificate" else "document"
+        filename = invoice.get(field)
+        if not filename:
+            return None
+        file_path = self.file_manager.path_for(filename)
         return str(file_path) if file_path.exists() else None
 
     def _build_invoice(self, data: Dict[str, Any], invoice_id: Optional[str] = None) -> Dict[str, Any]:

@@ -52,11 +52,11 @@ export const api = {
 
   // ─── Documents ──────────────────────────────────────────────────────────────
 
-  /** Attach a PDF to an existing invoice */
-  uploadDocument: (invoiceId: string, file: File): Promise<{ filename: string }> => {
+  /** Attach a PDF to an existing invoice (doc_type: 'invoice' | 'certificate') */
+  uploadDocument: (invoiceId: string, file: File, docType: 'invoice' | 'certificate' = 'invoice'): Promise<{ filename: string }> => {
     const fd = new FormData()
     fd.append('file', file)
-    return req<{ filename: string }>(`/invoices/${invoiceId}/document`, {
+    return req<{ filename: string }>(`/invoices/${invoiceId}/document?doc_type=${docType}`, {
       method:  'POST',
       headers: {},           // let browser set multipart boundary
       body:    fd,
@@ -65,7 +65,11 @@ export const api = {
 
   /** Returns the download URL for an invoice document */
   documentUrl: (invoiceId: string): string =>
-    `${BASE}/invoices/${invoiceId}/document`,
+    `${BASE}/invoices/${invoiceId}/document?doc_type=invoice`,
+
+  /** Returns the download URL for a recycling certificate */
+  certificateUrl: (invoiceId: string): string =>
+    `${BASE}/invoices/${invoiceId}/document?doc_type=certificate`,
 
   // ─── Analytics ──────────────────────────────────────────────────────────────
 

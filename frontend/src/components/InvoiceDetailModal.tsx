@@ -95,13 +95,17 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
 
   const isRecyclable = invoice.tipo === 'recyclable'
   const hasDoc = !!invoice._raw?.document
+  const hasCert = !!invoice._raw?.certificate
   const docUrl = hasDoc ? api.documentUrl(invoice.backendId) : null
+  const certUrl = hasCert ? api.certificateUrl(invoice.backendId) : null
+  // Show whichever document is available in the PDF viewer (prefer invoice, fallback to cert)
+  const previewUrl = docUrl ?? certUrl
 
   return (
     <Dialog open={!!invoice} onOpenChange={onClose}>
       <DialogContent
         className="max-h-[88vh] overflow-hidden flex flex-col p-0"
-        style={{ width: '95vw', maxWidth: hasDoc ? '1152px' : '1024px' }}
+        style={{ width: '95vw', maxWidth: previewUrl ? '1152px' : '1024px' }}
       >
         {/* Header */}
         <DialogHeader className="px-8 pt-7 pb-4 border-b border-slate-100">
@@ -131,9 +135,9 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
         </DialogHeader>
 
         {/* Body Container */}
-        <div className={`overflow-hidden flex-1 flex ${hasDoc ? 'flex-col md:flex-row' : 'flex-col'}`}>
+        <div className={`overflow-hidden flex-1 flex ${previewUrl ? 'flex-col md:flex-row' : 'flex-col'}`}>
           {/* Metadata Sidebar (or full width if no doc) */}
-          <div className={`overflow-y-auto px-8 py-4 ${hasDoc ? 'w-full md:w-1/3 border-r border-slate-100 flex-shrink-0' : 'w-full'}`}>
+          <div className={`overflow-y-auto px-8 py-4 ${previewUrl ? 'w-full md:w-1/3 border-r border-slate-100 flex-shrink-0' : 'w-full'}`}>
             <div className={hasDoc ? 'flex flex-col gap-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-x-10 gap-y-6'}>
               
               {/* BLOCK 1: Datos & Montos */}
@@ -219,24 +223,30 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
                 <div className="flex flex-col gap-3">
                   <div className={`flex items-center gap-3 border rounded-xl p-3 ${hasDoc ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
                     <FolderOpenIcon className={`w-5 h-5 shrink-0 ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`} />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold ${hasDoc ? 'text-emerald-700' : 'text-slate-700'}`}>Factura PDF</p>
-                      <p className={`text-xs ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      <p className={`text-xs truncate ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`}>
                         {hasDoc ? invoice._raw.document : 'No adjunto aún'}
                       </p>
                     </div>
                     {hasDoc
-                      ? <DocumentCheckIcon className="w-4 h-4 text-emerald-500 ml-auto" title="Adjunto" />
-                      : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto" title="No adjunto aún" />
+                      ? <DocumentCheckIcon className="w-4 h-4 text-emerald-500 ml-auto shrink-0" title="Adjunto" />
+                      : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto shrink-0" title="No adjunto aún" />
                     }
                   </div>
                   {isRecyclable && (
-                    <div className="flex items-center gap-3 border border-indigo-100 rounded-xl p-3 bg-indigo-50/30">
-                      <ArrowPathRoundedSquareIcon className="w-5 h-5 text-indigo-400 shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-indigo-700">Certificado Reciclaje</p>
-                        <p className="text-xs text-indigo-400">{invoice.folio !== '—' ? `cert_${invoice.folio}.pdf` : 'Pendiente'}</p>
+                    <div className={`flex items-center gap-3 border rounded-xl p-3 ${hasCert ? 'border-indigo-100 bg-indigo-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                      <ArrowPathRoundedSquareIcon className={`w-5 h-5 shrink-0 ${hasCert ? 'text-indigo-400' : 'text-slate-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-semibold ${hasCert ? 'text-indigo-700' : 'text-slate-700'}`}>Certificado Reciclaje</p>
+                        <p className={`text-xs truncate ${hasCert ? 'text-indigo-400' : 'text-slate-400'}`}>
+                          {hasCert ? invoice._raw.certificate : 'No adjunto aún'}
+                        </p>
                       </div>
+                      {hasCert
+                        ? <DocumentCheckIcon className="w-4 h-4 text-indigo-500 ml-auto shrink-0" title="Adjunto" />
+                        : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto shrink-0" title="No adjunto aún" />
+                      }
                     </div>
                   )}
                 </div>
@@ -246,15 +256,16 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
           </div>
 
           {/* PDF Viewer */}
-          {hasDoc && (
+          {previewUrl && (
              <div className="flex-1 bg-slate-100 flex flex-col min-h-[500px]">
                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-xs font-medium text-slate-500">
-                 <span>Vista previa PDF</span>
-                 <a href={docUrl!} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors">
-                   <ArrowPathRoundedSquareIcon className="w-3.5 h-3.5" /> Descargar original
-                 </a>
+                 <span>Vista previa · {docUrl ? 'Factura' : 'Certificado'}</span>
+                 <div className="flex items-center gap-3">
+                   {docUrl && <a href={docUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 transition-colors">Factura PDF</a>}
+                   {certUrl && <a href={certUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 transition-colors">Certificado PDF</a>}
+                 </div>
                </div>
-               <iframe src={docUrl!} className="w-full h-full flex-1 border-0" />
+               <iframe src={previewUrl} className="w-full h-full flex-1 border-0" />
              </div>
           )}
         </div>
