@@ -30,14 +30,20 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FolderKey = 'sinader' | 'certificados' | 'facturas2026' | 'facturas2025' | 'facturas2024'
+type SortKey = 'date-desc' | 'date-asc' | 'name-asc'
+type TypeFilter = 'all' | 'domiciliary' | 'recyclable'
 
 interface DocFile {
   id: string
   name: string
   folder: FolderKey
-  date: string
+  date: string        // formatted display date
+  rawDate: string     // ISO date for sorting
   size: string
-  url?: string          // real url once backend is connected
+  invoiceType: 'domiciliary' | 'recyclable' | 'sinader'
+  provider: string
+  invoiceNumber: string
+  url?: string
 }
 
 // ─── No mock files, fetched from API ──────────────────────────────────────────
@@ -131,14 +137,18 @@ function SINADERUploader({ onUpload }: { onUpload: (f: DocFile) => void }) {
         })
         await api.uploadDocument(inv.id, file)
         onUpload({
-          id:     inv.id,
-          name:   file.name,
-          folder: 'sinader',
-          date:   `${monthLabel} ${year}`,
-          size:   file.size > 1024 * 1024
+          id:            inv.id,
+          name:          file.name,
+          folder:        'sinader',
+          date:          `${monthLabel} ${year}`,
+          rawDate:       dateStr,
+          size:          file.size > 1024 * 1024
             ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
             : `${Math.round(file.size / 1024)} KB`,
-          url:    api.documentUrl(inv.id),
+          invoiceType:   'sinader',
+          provider:      'SINADER',
+          invoiceNumber: `SINADER-${year}-${month.padStart(2,'0')}`,
+          url:           api.documentUrl(inv.id),
         })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error subiendo archivo')
@@ -257,6 +267,8 @@ export default function ArchivosView() {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [showUploader, setShowUploader]   = useState(false)
   const [viewingFile, setViewingFile]     = useState<DocFile | null>(null)
+  const [sortBy, setSortBy]               = useState<SortKey>('date-desc')
+  const [typeFilter, setTypeFilter]       = useState<TypeFilter>('all')
 
   const loadFiles = async () => {
     setLoading(true)
@@ -266,39 +278,31 @@ export default function ArchivosView() {
 
       for (const inv of invoices) {
         const year = inv.date ? new Date(inv.date).getFullYear() : new Date().getFullYear()
-        const dateStr = new Date(inv.date || inv.created_at || Date.now()).toLocaleDateString('es-CL')
+        const rawDate = inv.date || inv.created_at || new Date().toISOString()
+        const dateStr = new Date(rawDate).toLocaleDateString('es-CL')
         const isSinader = inv.provider.toUpperCase() === 'SINADER'
+        const invType = isSinader ? 'sinader' : (inv.type as 'domiciliary' | 'recyclable')
+
+        const base = {
+          rawDate,
+          date: dateStr,
+          size: 'PDF',
+          provider: inv.provider || '',
+          invoiceNumber: (inv as any).number || '',
+        }
 
         // Invoice document
         if (inv.document) {
           let folder: FolderKey = 'facturas2026'
-          if (isSinader) {
-            folder = 'sinader'
-          } else if (year === 2024) {
-            folder = 'facturas2024'
-          } else if (year === 2025) {
-            folder = 'facturas2025'
-          }
-          loaded.push({
-            id: `${inv.id}__invoice`,
-            name: inv.document,
-            folder,
-            date: dateStr,
-            size: 'PDF',
-            url: api.documentUrl(inv.id),
-          })
+          if (isSinader) folder = 'sinader'
+          else if (year === 2024) folder = 'facturas2024'
+          else if (year === 2025) folder = 'facturas2025'
+          loaded.push({ ...base, id: `${inv.id}__invoice`, name: inv.document, folder, invoiceType: invType, url: api.documentUrl(inv.id) })
         }
 
         // Certificate document (recyclable invoices)
         if (inv.certificate) {
-          loaded.push({
-            id: `${inv.id}__cert`,
-            name: inv.certificate,
-            folder: 'certificados',
-            date: dateStr,
-            size: 'PDF',
-            url: api.certificateUrl(inv.id),
-          })
+          loaded.push({ ...base, id: `${inv.id}__cert`, name: inv.certificate, folder: 'certificados', invoiceType: 'recyclable', url: api.certificateUrl(inv.id) })
         }
       }
       setFiles(loaded)
@@ -314,11 +318,24 @@ export default function ArchivosView() {
   // ── Derived ──
   const folderCount = (key: FolderKey) => files.filter(f => f.folder === key).length
 
-  const displayed = files.filter(f => {
-    const matchFolder = activeFolder ? f.folder === activeFolder : true
-    const matchSearch = f.name.toLowerCase().includes(search.toLowerCase())
-    return matchFolder && matchSearch
-  })
+  const displayed = [...files]
+    .filter(f => {
+      const matchFolder = activeFolder ? f.folder === activeFolder : true
+      const matchSearch = search
+        ? f.name.toLowerCase().includes(search.toLowerCase()) ||
+          f.provider.toLowerCase().includes(search.toLowerCase()) ||
+          f.invoiceNumber.toLowerCase().includes(search.toLowerCase())
+        : true
+      const matchType = typeFilter === 'all' ? true
+        : typeFilter === 'domiciliary' ? f.invoiceType === 'domiciliary'
+        : f.invoiceType === 'recyclable'
+      return matchFolder && matchSearch && matchType
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date-desc') return b.rawDate.localeCompare(a.rawDate)
+      if (sortBy === 'date-asc')  return a.rawDate.localeCompare(b.rawDate)
+      return a.name.localeCompare(b.name)
+    })
 
   // ── Selection ──
   const toggleFile = (id: string) =>
@@ -417,11 +434,38 @@ export default function ArchivosView() {
 
       {/* File table */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="text-sm font-semibold text-slate-700">
             {activeFolder ? FOLDER_LABEL[activeFolder] : 'Todos los documentos'}
             <span className="ml-2 text-xs font-normal text-slate-400">({displayed.length} archivos)</span>
           </h3>
+
+          <div className="flex items-center gap-2">
+            {/* Type filter */}
+            <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden text-xs font-medium">
+              {(['all', 'domiciliary', 'recyclable'] as TypeFilter[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={`px-3 py-1.5 transition-colors ${typeFilter === t ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                >
+                  {t === 'all' ? 'Todos' : t === 'domiciliary' ? '🚛 Dom.' : '♻️ Rec.'}
+                </button>
+              ))}
+            </div>
+            {/* Sort */}
+            <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden text-xs font-medium">
+              {([['date-desc', '↓ Recientes'], ['date-asc', '↑ Antiguas'], ['name-asc', 'A-Z']] as [SortKey, string][]).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setSortBy(k)}
+                  className={`px-3 py-1.5 transition-colors ${sortBy === k ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Bulk toolbar */}
           {selectedFiles.size > 0 && (
@@ -458,24 +502,25 @@ export default function ArchivosView() {
                     onChange={toggleAll}
                   />
                 </TableHead>
-                <TableHead className="font-semibold text-xs text-slate-500 h-10 w-[40%]">Nombre del archivo</TableHead>
+                <TableHead className="font-semibold text-xs text-slate-500 h-10 w-[35%]">Nombre del archivo</TableHead>
+                <TableHead className="font-semibold text-xs text-slate-500 h-10">Proveedor</TableHead>
+                <TableHead className="font-semibold text-xs text-slate-500 h-10">Tipo</TableHead>
                 <TableHead className="font-semibold text-xs text-slate-500 h-10">Carpeta</TableHead>
                 <TableHead className="font-semibold text-xs text-slate-500 h-10">Fecha</TableHead>
-                <TableHead className="font-semibold text-xs text-slate-500 h-10">Tamaño</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && displayed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-slate-400 text-sm py-10">
+                  <TableCell colSpan={7} className="text-center text-slate-400 text-sm py-10">
                     Cargando documentos reales...
                   </TableCell>
                 </TableRow>
               )}
               {!loading && displayed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-slate-400 text-sm py-10">
+                  <TableCell colSpan={7} className="text-center text-slate-400 text-sm py-10">
                     No se encontraron documentos en la base de datos real.
                   </TableCell>
                 </TableRow>
@@ -498,8 +543,21 @@ export default function ArchivosView() {
                     <TableCell className="py-2.5">
                       <div className="flex items-center gap-2">
                         <DocumentIcon className="w-4 h-4 text-red-500 shrink-0" />
-                        <span className="font-medium text-slate-800 text-[13px]">{file.name}</span>
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 text-[13px] truncate">{file.invoiceNumber || '—'}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{file.name}</p>
+                        </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-slate-600 py-2.5 text-[13px]">{file.provider || '—'}</TableCell>
+                    <TableCell className="py-2.5">
+                      {file.invoiceType === 'recyclable' ? (
+                        <Badge variant="outline" className="text-[11px] font-medium text-teal-700 border-teal-200 bg-teal-50 rounded-full">♻️ Reciclable</Badge>
+                      ) : file.invoiceType === 'sinader' ? (
+                        <Badge variant="outline" className="text-[11px] font-medium text-indigo-700 border-indigo-200 bg-indigo-50 rounded-full">SINADER</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] font-medium text-slate-600 border-slate-200 bg-slate-50 rounded-full">🚛 Domiciliario</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="py-2.5">
                       <Badge variant="outline" className="text-[11px] font-medium text-slate-600 border-slate-200 rounded-full">
@@ -507,7 +565,6 @@ export default function ArchivosView() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-slate-500 py-2.5 text-[13px]">{file.date}</TableCell>
-                    <TableCell className="text-slate-500 py-2.5 text-[13px]">{file.size}</TableCell>
                     <TableCell className="py-2.5">
                       <div className="flex items-center gap-1 justify-end">
                         <button

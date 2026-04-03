@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import type { AnalyticsData } from '@/lib/types'
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Legend, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { BarChart, Bar, PieChart, Pie, Cell, Legend, CartesianGrid, XAxis, YAxis } from 'recharts'
 import type { ChartConfig } from '@/components/ui/chart'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
@@ -319,7 +319,7 @@ export default function AnalyticsView() {
                         <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                       ))}
                     </Pie>
-                    <ChartTooltip formatter={(value: number) => [`${value.toFixed(3)} t`, '']} />
+                    <ChartTooltip formatter={(value) => [typeof value === 'number' ? `${value.toFixed(3)} t` : '', '']} />
                     <Legend
                       iconType="circle"
                       iconSize={8}
