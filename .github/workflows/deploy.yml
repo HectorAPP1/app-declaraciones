@@ -1,0 +1,28 @@
+name: Deploy backend to PythonAnywhere
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git pull via SSH
+        run: |
+          echo "${{ secrets.PYTHONANYWHERE_SSH_KEY }}" > /tmp/pa_key
+          chmod 600 /tmp/pa_key
+          ssh -i /tmp/pa_key \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.PYTHONANYWHERE_USERNAME }}@ssh.pythonanywhere.com \
+              "cd ~/app-declaraciones && git pull origin main"
+
+      - name: Reload webapp
+        run: |
+          curl -s -f -X POST \
+            "https://www.pythonanywhere.com/api/v0/user/${{ secrets.PYTHONANYWHERE_USERNAME }}/webapps/${{ secrets.PYTHONANYWHERE_USERNAME }}.pythonanywhere.com/reload/" \
+            -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}"
