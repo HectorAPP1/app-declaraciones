@@ -22,14 +22,15 @@ export default function DashboardView() {
   const [year, setYear] = useState(new Date().getFullYear().toString())
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const loadData = async () => {
-    setLoading(true)
+    setLoading(true); setError(null)
     try {
       const res = await api.getAnalytics(year)
       setData(res)
     } catch (e) {
-      console.error(e)
+      setError(e instanceof Error ? e.message : 'Error al cargar los datos')
     } finally {
       setLoading(false)
     }
@@ -78,6 +79,14 @@ export default function DashboardView() {
           <Button variant="outline" className="shadow-sm bg-white h-9" onClick={loadData}>Actualizar</Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a1 1 0 00.87 1.5h18.62a1 1 0 00.87-1.5L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+          {error}
+          <button className="underline font-medium ml-1" onClick={loadData}>Reintentar</button>
+        </div>
+      )}
 
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
         <Card className="shadow-sm border-0 bg-indigo-50">

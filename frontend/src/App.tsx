@@ -5,18 +5,53 @@ import HistoryView from './views/History'
 import AnalyticsView from './views/Analytics'
 import ArchivosView from './views/Archivos'
 import WordAssistantView from './views/WordAssistant'
+import LoginView from './views/Login'
 import InvoiceModal from './components/InvoiceModal'
+import UserProfile from './components/UserProfile'
 import { 
   Squares2X2Icon, 
   DocumentTextIcon, 
   ChartBarIcon,
   FolderOpenIcon,
-  SparklesIcon
+  SparklesIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 
+const APP_PASSWORD = 'Ether25$'
+const AUTH_KEY = 'app_authenticated'
+const VIEW_KEY = 'app_last_view'
+
 export default function App() {
-  const [currentView, setCurrentView] = useState('history')
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem(AUTH_KEY) === 'true'
+  })
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem(VIEW_KEY) || 'dashboard'
+  })
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleLogin = (password: string): boolean => {
+    if (password === APP_PASSWORD) {
+      localStorage.setItem(AUTH_KEY, 'true')
+      setIsAuthenticated(true)
+      return true
+    }
+    return false
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_KEY)
+    setIsAuthenticated(false)
+  }
+
+  const handleViewChange = (view: string) => {
+    setCurrentView(view)
+    localStorage.setItem(VIEW_KEY, view)
+  }
+
+  if (!isAuthenticated) {
+    return <LoginView onLogin={handleLogin} />
+  }
 
   return (
     <div className="flex h-screen w-full bg-white text-slate-900 overflow-hidden font-sans">
@@ -33,22 +68,22 @@ export default function App() {
             <p className="px-3 text-xs font-semibold text-slate-500 mb-1 tracking-wide">Home</p>
             <nav className="flex flex-col gap-0.5">
               <button 
-                onClick={() => setCurrentView('dashboard')}
-                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'dashboard' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
+                onClick={() => handleViewChange('dashboard')}
+                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'dashboard' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
               >
                 <Squares2X2Icon className="w-[18px] h-[18px]" />
                 Dashboard
               </button>
               <button 
-                onClick={() => setCurrentView('history')}
-                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'history' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
+                onClick={() => handleViewChange('history')}
+                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'history' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
               >
                 <DocumentTextIcon className="w-[18px] h-[18px]" />
                 Histórico
               </button>
               <button 
-                onClick={() => setCurrentView('analytics')}
-                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'analytics' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
+                onClick={() => handleViewChange('analytics')}
+                className={`flex items-center gap-3 h-9 text-[13px] px-3 rounded-[6px] transition-colors ${currentView === 'analytics' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
               >
                 <ChartBarIcon className="w-[18px] h-[18px]" />
                 Analytics
@@ -60,15 +95,15 @@ export default function App() {
             <p className="px-3 text-[11px] font-semibold text-slate-500 mb-1 tracking-wide uppercase">Documents</p>
             <nav className="flex flex-col gap-0.5">
               <button 
-                onClick={() => setCurrentView('archivos')}
-                className={`flex items-center gap-3 text-[13px] px-3 h-8 rounded-[6px] transition-colors ${currentView === 'archivos' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
+                onClick={() => handleViewChange('archivos')}
+                className={`flex items-center gap-3 text-[13px] px-3 h-8 rounded-[6px] transition-colors ${currentView === 'archivos' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
               >
                 <FolderOpenIcon className="w-[18px] h-[18px]" />
                 Archivos
               </button>
               <button 
-                onClick={() => setCurrentView('word-assistant')}
-                className={`flex items-center gap-3 text-[13px] px-3 h-8 rounded-[6px] transition-colors ${currentView === 'word-assistant' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
+                onClick={() => handleViewChange('word-assistant')}
+                className={`flex items-center gap-3 text-[13px] px-3 h-8 rounded-[6px] transition-colors ${currentView === 'word-assistant' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`}
               >
                 <SparklesIcon className="w-[18px] h-[18px]" />
                 Word Assistant
@@ -76,6 +111,7 @@ export default function App() {
             </nav>
           </div>
         </div>
+        <UserProfile />
       </aside>
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white">
@@ -87,10 +123,19 @@ export default function App() {
             {currentView === 'archivos' && 'Data Library'}
             {currentView === 'word-assistant' && 'Word Assistant AI'}
           </div>
-          <Button variant="outline" onClick={() => setIsModalOpen(true)} className="bg-white shadow-sm font-medium h-9 text-xs flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-            Quick Create
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsModalOpen(true)} className="bg-white shadow-sm font-medium h-9 text-xs flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Quick Create
+            </Button>
+            <button
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <ArrowRightOnRectangleIcon className="w-4 h-4" />
+            </button>
+          </div>
         </header>
         
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-16 bg-[#fdfdfd]">
