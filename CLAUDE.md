@@ -20,6 +20,8 @@ app-declaraciones/
 ├── backend/
 │   ├── app.py                  # Flask app factory (create_app)
 │   ├── requirements.txt
+│   ├── migrate_categories.py   # Migración de residue_category en reciclables
+│   ├── migrate_documents.py    # Migración document → certificate en reciclables
 │   ├── repositories/           # LocalInvoiceRepository (JSON)
 │   ├── services/               # InvoiceService + analytics
 │   ├── storage/                # FileManager (PDFs locales)
@@ -48,9 +50,13 @@ Base URL en producción: `https://sirhector.pythonanywhere.com/api`
 | POST | `/api/invoices` | Crear factura |
 | PUT | `/api/invoices/<id>` | Actualizar factura |
 | DELETE | `/api/invoices/<id>` | Eliminar factura |
-| POST | `/api/invoices/<id>/document` | Subir PDF |
-| GET | `/api/invoices/<id>/document` | Descargar PDF |
+| POST | `/api/invoices/<id>/document?doc_type=invoice\|certificate` | Subir PDF (factura o certificado) |
+| GET | `/api/invoices/<id>/document?doc_type=invoice\|certificate` | Descargar PDF |
 | GET | `/api/analytics?year=YYYY` | Analytics filtrados por año |
+
+### Campos de documentos en Invoice
+- `document`: nombre del archivo PDF de factura (`{id}.pdf`)
+- `certificate`: nombre del archivo PDF de certificado de reciclaje (`{id}_cert.pdf`)
 
 ## Deploy actual
 
@@ -101,3 +107,25 @@ cd frontend && npm run dev
 - El selector de año en Dashboard y Analytics usa `new Date().getFullYear()` como default
 - `invoices.json` está en `.gitignore` — no se commitea nunca
 - PythonAnywhere se desactiva si no se inicia sesión en 1 mes — recordar hacer clic en "Run until 1 month from today"
+
+## Estado del modelo de datos (Invoice)
+
+Campos clave más allá del CRUD básico:
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `type` | `domiciliary` \| `recyclable` | Tipo de factura |
+| `document` | `string \| null` | Filename del PDF de factura |
+| `certificate` | `string \| null` | Filename del PDF de certificado (solo reciclables) |
+| `payment_status` | `pending\|paid\|overdue` | Estado de pago (plazo 30 días) |
+| `sinader_status` | `pending\|declared\|overdue` | Estado declaración SINADER (plazo 10 días) |
+| `sinader_folio` | `string` | Folio de declaración SINADER |
+| `aggregates.residue_totals` | `Record<string, number>` | Toneladas por categoría |
+| `aggregates.residue_amounts` | `Record<string, number>` | Montos por categoría |
+
+## Historial de migraciones de datos
+
+Scripts ejecutados en PythonAnywhere sobre `invoices.json`:
+
+1. **`migrate_categories.py`** — Corrigió `residue_category` en 22 facturas reciclables (cartón, plástico, metal estaban como "otros")
+2. **`migrate_documents.py`** — Movió `document` → `certificate` + renombró `{id}.pdf` → `{id}_cert.pdf` en 22 facturas reciclables (el bug de upload sobreescribía la factura con el certificado)
