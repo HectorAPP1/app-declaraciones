@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -74,24 +74,55 @@ const emptyResiduo = (): ResiduoItem => ({
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+const EMPTY_FORM: FormData = {
+  numero: '', proveedor: '', fecha: '', currency: 'CLP', type: 'domiciliary',
+  sinaderStatus: 'pending', paymentStatus: 'pending',
+  subtotal: '', impuestos: '', total: '', toneladas: '',
+  residuos: [emptyResiduo()], invoiceFile: null, certFile: null,
+}
+
+export default function InvoiceModal({ isOpen, onClose, editInvoice }: {
+  isOpen: boolean
+  onClose: () => void
+  editInvoice?: any
+}) {
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState<FormData>({
-    numero: '',
-    proveedor: '',
-    fecha: '',
-    currency: 'CLP',
-    type: 'domiciliary',
-    sinaderStatus: 'pending',
-    paymentStatus: 'pending',
-    subtotal: '',
-    impuestos: '',
-    total: '',
-    toneladas: '',
-    residuos: [emptyResiduo()],
-    invoiceFile: null,
-    certFile: null,
-  })
+  const [form, setForm] = useState<FormData>(EMPTY_FORM)
+
+  // Populate form when opening in edit mode
+  useEffect(() => {
+    if (isOpen && editInvoice) {
+      setForm({
+        numero: editInvoice.number || '',
+        proveedor: editInvoice.provider || '',
+        fecha: editInvoice.date || '',
+        currency: editInvoice.currency || 'CLP',
+        type: editInvoice.type || 'domiciliary',
+        sinaderStatus: editInvoice.sinader_status || 'pending',
+        paymentStatus: editInvoice.payment_status || 'pending',
+        subtotal: String(editInvoice.totals?.subtotal || ''),
+        impuestos: String(editInvoice.totals?.tax || ''),
+        total: String(editInvoice.totals?.total || ''),
+        toneladas: editInvoice.type === 'domiciliary'
+          ? String(editInvoice.items?.[0]?.quantity_ton || '')
+          : '',
+        residuos: editInvoice.type === 'recyclable' && editInvoice.items?.length > 0
+          ? editInvoice.items.map((item: any) => ({
+              material: item.residue_category || 'otros',
+              unit: item.unit === 'KG' ? 'kg' : 'ton',
+              quantity: String(item.unit === 'KG' ? item.quantity : (item.quantity_ton || item.quantity || '')),
+              destination: 'Reciclaje',
+            }))
+          : [emptyResiduo()],
+        invoiceFile: null,
+        certFile: null,
+      })
+      setStep(1)
+    } else if (!isOpen) {
+      setForm(EMPTY_FORM)
+      setStep(1)
+    }
+  }, [isOpen, editInvoice?.id])
 
   const set = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -152,9 +183,16 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
         sinader_status: form.sinaderStatus as 'pending' | 'declared' | 'overdue'
       }
 
-      const inv = await api.createInvoice(payload)
-      if (form.invoiceFile) await api.uploadDocument(inv.id, form.invoiceFile, 'invoice')
-      if (form.certFile) await api.uploadDocument(inv.id, form.certFile, 'certificate')
+      let invId: string
+      if (editInvoice) {
+        await api.updateInvoice(editInvoice.id, payload)
+        invId = editInvoice.id
+      } else {
+        const inv = await api.createInvoice(payload)
+        invId = inv.id
+      }
+      if (form.invoiceFile) await api.uploadDocument(invId, form.invoiceFile, 'invoice')
+      if (form.certFile) await api.uploadDocument(invId, form.certFile, 'certificate')
 
       handleClose()
       window.location.reload()
@@ -172,7 +210,7 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
       >
         {/* ── Header ── */}
         <DialogHeader className="px-8 pt-7 pb-0">
-          <DialogTitle className="text-xl font-bold text-slate-900">Registrar factura</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-slate-900">{editInvoice ? 'Editar factura' : 'Registrar factura'}</DialogTitle>
         </DialogHeader>
 
         {/* ── Step indicators ── */}

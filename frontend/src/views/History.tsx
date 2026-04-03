@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import InvoiceDetailModal from '@/components/InvoiceDetailModal'
+import InvoiceModal from '@/components/InvoiceModal'
 import {
   Table, TableBody, TableCell,
   TableHead, TableHeader, TableRow,
@@ -247,6 +248,7 @@ export default function HistoryView({ onOpenModal }: HistoryViewProps) {
   const [selected, setSelected]         = useState<Set<string>>(new Set())
   const [showCols, setShowCols]         = useState(false)
   const [viewInvoice, setViewInvoice]   = useState<DisplayInvoice | null>(null)
+  const [editInvoice, setEditInvoice]   = useState<any>(null)
 
   const [visibleCols, setVisibleCols] = useState<Set<string>>(() => {
     try {
@@ -287,7 +289,9 @@ export default function HistoryView({ onOpenModal }: HistoryViewProps) {
       if (!cur) return
       const updated = await api.updateInvoice(backendId, { ...cur._raw, ...patch })
       setInvoices(prev => prev.map(i => i.backendId === backendId ? fmt(updated) : i))
-    } catch (e) { console.error('Error actualizando:', e) }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo actualizar la factura')
+    }
   }
 
   // ─ Delete ──────────────────────────────────────────────────────────────────
@@ -296,7 +300,9 @@ export default function HistoryView({ onOpenModal }: HistoryViewProps) {
       await api.deleteInvoice(backendId)
       setInvoices(prev => prev.filter(i => i.backendId !== backendId))
       setSelected(prev => { const n = new Set(prev); n.delete(backendId); return n })
-    } catch (e) { console.error('Error eliminando:', e) }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar la factura')
+    }
   }
 
   // ─ Filters ─────────────────────────────────────────────────────────────────
@@ -535,7 +541,16 @@ export default function HistoryView({ onOpenModal }: HistoryViewProps) {
       </div>
 
       {/* Invoice Detail Modal */}
-      <InvoiceDetailModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
+      <InvoiceDetailModal
+        invoice={viewInvoice}
+        onClose={() => setViewInvoice(null)}
+        onEdit={(inv) => { setViewInvoice(null); setEditInvoice(inv._raw) }}
+      />
+      <InvoiceModal
+        isOpen={!!editInvoice}
+        onClose={() => setEditInvoice(null)}
+        editInvoice={editInvoice}
+      />
     </div>
   )
 }

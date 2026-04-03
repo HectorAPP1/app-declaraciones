@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
   Dialog,
@@ -88,24 +89,49 @@ function Row({ icon: Icon, label, value, className = '' }: {
 interface Props {
   invoice: Invoice | null
   onClose: () => void
+  onEdit: (invoice: Invoice) => void
 }
 
-export default function InvoiceDetailModal({ invoice, onClose }: Props) {
+export default function InvoiceDetailModal({ invoice, onClose, onEdit }: Props) {
+  const [activeDoc, setActiveDoc] = useState<'invoice' | 'certificate'>('invoice')
+  const [uploading, setUploading] = useState(false)
+  const uploadRef = useRef<HTMLInputElement>(null)
+
+  const isRecyclable = invoice?.tipo === 'recyclable'
+  const hasDoc = !!invoice?._raw?.document
+  const hasCert = !!invoice?._raw?.certificate
+
+  // Auto-select the cert tab if no invoice doc exists but cert does
+  useEffect(() => {
+    if (invoice) {
+      setActiveDoc(!invoice._raw?.document && invoice._raw?.certificate ? 'certificate' : 'invoice')
+    }
+  }, [invoice?.backendId])
+
   if (!invoice) return null
 
-  const isRecyclable = invoice.tipo === 'recyclable'
-  const hasDoc = !!invoice._raw?.document
-  const hasCert = !!invoice._raw?.certificate
   const docUrl = hasDoc ? api.documentUrl(invoice.backendId) : null
   const certUrl = hasCert ? api.certificateUrl(invoice.backendId) : null
-  // Show whichever document is available in the PDF viewer (prefer invoice, fallback to cert)
-  const previewUrl = docUrl ?? certUrl
+  const previewUrl = activeDoc === 'invoice' ? docUrl : (certUrl ?? docUrl)
+  const hasAnyDoc = hasDoc || hasCert
+
+  const handleUploadInvoice = async (file: File) => {
+    setUploading(true)
+    try {
+      await api.uploadDocument(invoice.backendId, file, 'invoice')
+      window.location.reload()
+    } catch (e) {
+      alert('Error al subir: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <Dialog open={!!invoice} onOpenChange={onClose}>
       <DialogContent
         className="max-h-[88vh] overflow-hidden flex flex-col p-0"
-        style={{ width: '95vw', maxWidth: previewUrl ? '1152px' : '1024px' }}
+        style={{ width: '95vw', maxWidth: hasAnyDoc ? '1152px' : '1024px' }}
       >
         {/* Header */}
         <DialogHeader className="px-8 pt-7 pb-4 border-b border-slate-100">
@@ -217,11 +243,18 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </div>
               </div>
 
-              {/* BLOCK 3: Documents */}
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Documentos adjuntos</p>
                 <div className="flex flex-col gap-3">
-                  <div className={`flex items-center gap-3 border rounded-xl p-3 ${hasDoc ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+
+                  {/* Factura PDF */}
+                  <div className={`flex items-center gap-3 border rounded-xl p-3 transition-all ${
+                    hasDoc
+                      ? activeDoc === 'invoice'
+                        ? 'border-indigo-300 bg-indigo-50/60 ring-1 ring-indigo-200'
+                        : 'border-emerald-100 bg-emerald-50/30'
+                      : 'border-slate-200 bg-slate-50/50'
+                  }`}>
                     <FolderOpenIcon className={`w-5 h-5 shrink-0 ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold ${hasDoc ? 'text-emerald-700' : 'text-slate-700'}`}>Factura PDF</p>
@@ -229,13 +262,46 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
                         {hasDoc ? invoice._raw.document : 'No adjunto aún'}
                       </p>
                     </div>
-                    {hasDoc
-                      ? <DocumentCheckIcon className="w-4 h-4 text-emerald-500 ml-auto shrink-0" title="Adjunto" />
-                      : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto shrink-0" title="No adjunto aún" />
-                    }
+                    {hasDoc ? (
+                      <button
+                        onClick={() => setActiveDoc('invoice')}
+                        className={`ml-auto shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                          activeDoc === 'invoice'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {activeDoc === 'invoice' ? 'Viendo' : 'Ver'}
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          ref={uploadRef}
+                          type="file"
+                          accept=".pdf"
+                          className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadInvoice(f) }}
+                        />
+                        <button
+                          onClick={() => uploadRef.current?.click()}
+                          disabled={uploading}
+                          className="ml-auto shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                        >
+                          {uploading ? 'Subiendo…' : 'Subir'}
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {/* Certificado */}
                   {isRecyclable && (
-                    <div className={`flex items-center gap-3 border rounded-xl p-3 ${hasCert ? 'border-indigo-100 bg-indigo-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <div className={`flex items-center gap-3 border rounded-xl p-3 transition-all ${
+                      hasCert
+                        ? activeDoc === 'certificate'
+                          ? 'border-indigo-300 bg-indigo-50/60 ring-1 ring-indigo-200'
+                          : 'border-indigo-100 bg-indigo-50/30'
+                        : 'border-slate-200 bg-slate-50/50'
+                    }`}>
                       <ArrowPathRoundedSquareIcon className={`w-5 h-5 shrink-0 ${hasCert ? 'text-indigo-400' : 'text-slate-400'}`} />
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-semibold ${hasCert ? 'text-indigo-700' : 'text-slate-700'}`}>Certificado Reciclaje</p>
@@ -243,12 +309,23 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
                           {hasCert ? invoice._raw.certificate : 'No adjunto aún'}
                         </p>
                       </div>
-                      {hasCert
-                        ? <DocumentCheckIcon className="w-4 h-4 text-indigo-500 ml-auto shrink-0" title="Adjunto" />
-                        : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto shrink-0" title="No adjunto aún" />
-                      }
+                      {hasCert ? (
+                        <button
+                          onClick={() => setActiveDoc('certificate')}
+                          className={`ml-auto shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                            activeDoc === 'certificate'
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {activeDoc === 'certificate' ? 'Viendo' : 'Ver'}
+                        </button>
+                      ) : (
+                        <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto shrink-0" title="No adjunto aún" />
+                      )}
                     </div>
                   )}
+
                 </div>
               </div>
 
@@ -259,10 +336,20 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
           {previewUrl && (
              <div className="flex-1 bg-slate-100 flex flex-col min-h-[500px]">
                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-xs font-medium text-slate-500">
-                 <span>Vista previa · {docUrl ? 'Factura' : 'Certificado'}</span>
-                 <div className="flex items-center gap-3">
-                   {docUrl && <a href={docUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 transition-colors">Factura PDF</a>}
-                   {certUrl && <a href={certUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 transition-colors">Certificado PDF</a>}
+                 <span>Vista previa · {activeDoc === 'invoice' ? 'Factura PDF' : 'Certificado Reciclaje'}</span>
+                 <div className="flex items-center gap-2">
+                   {docUrl && (
+                     <a href={docUrl} target="_blank" rel="noreferrer"
+                       className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                       <DocumentTextIcon className="w-3.5 h-3.5" /> Descargar Factura
+                     </a>
+                   )}
+                   {certUrl && (
+                     <a href={certUrl} target="_blank" rel="noreferrer"
+                       className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                       <ArrowPathRoundedSquareIcon className="w-3.5 h-3.5" /> Descargar Cert.
+                     </a>
+                   )}
                  </div>
                </div>
                <iframe src={previewUrl} className="w-full h-full flex-1 border-0" />
@@ -279,7 +366,10 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
           >
             Cerrar
           </button>
-          <button className="flex items-center gap-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-lg shadow-sm transition-colors">
+          <button
+            onClick={() => { onClose(); onEdit(invoice) }}
+            className="flex items-center gap-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2 rounded-lg shadow-sm transition-colors"
+          >
             <DocumentCheckIcon className="w-4 h-4" />
             Editar factura
           </button>
