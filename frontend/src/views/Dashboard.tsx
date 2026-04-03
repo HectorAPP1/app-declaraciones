@@ -68,7 +68,7 @@ export default function DashboardView() {
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({length: 5}).map((_, i) => {
+                {Array.from({length: new Date().getFullYear() - 2023}).map((_, i) => {
                   const y = (new Date().getFullYear() - i).toString()
                   return <SelectItem key={y} value={y}>{y}</SelectItem>
                 })}

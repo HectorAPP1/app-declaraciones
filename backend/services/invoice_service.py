@@ -190,7 +190,8 @@ class InvoiceService:
                 rec_months[dt.month]["tons"] += tons
                 rec_totals["amount"] += amount
                 rec_totals["tons"] += tons
-                resolved_amounts = residue_amounts or self._distribute_amounts(amount, residue_totals)
+                has_amounts = residue_amounts and any(v > 0 for v in residue_amounts.values())
+                resolved_amounts = residue_amounts if has_amounts else self._distribute_amounts(amount, residue_totals)
                 for category, tons_value in residue_totals.items():
                     rec_categories.setdefault(
                         category,

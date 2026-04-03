@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { TrendingUp, TrendingDown, Info } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
@@ -11,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import type { AnalyticsData } from '@/lib/types'
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Legend, CartesianGrid, XAxis, YAxis } from 'recharts'
 import type { ChartConfig } from '@/components/ui/chart'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
@@ -103,13 +104,25 @@ export default function AnalyticsView() {
     ? ((totalTonsRec - prevYearRecTons) / prevYearRecTons * 100)
     : null
 
+  const prevYearShare = useMemo(() => {
+    if (!data?.historical) return null
+    const prev = data.historical.find(h => h.name === String(parseInt(year) - 1))
+    if (!prev) return null
+    const total = prev.dom_tons + prev.rec_tons
+    return total > 0 ? (prev.rec_tons / total * 100) : null
+  }, [data, year])
+
+  const yoyShareDiff = prevYearShare !== null
+    ? (parseFloat(shareReciclable) - prevYearShare)
+    : null
+
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div className="max-w-xl">
           <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Laboratorio de Analytics</p>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">Valorización y performance en un vistazo</h2>
-          <p className="text-slate-500 text-sm mt-1 leading-relaxed">Tendencias en gastos y toneladas entre residuos domiciliarios y reciclables con diseño unificado.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-800">Valorización y performance en un vistazo</h2>
+          <p className="text-slate-500 text-xs mt-1 leading-relaxed">Tendencias en gastos y toneladas entre residuos domiciliarios y reciclables.</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -119,7 +132,7 @@ export default function AnalyticsView() {
                 <SelectValue placeholder="Año" />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({length: 5}).map((_, i) => {
+                {Array.from({length: new Date().getFullYear() - 2023}).map((_, i) => {
                   const y = (new Date().getFullYear() - i).toString()
                   return <SelectItem key={y} value={y}>{y}</SelectItem>
                 })}
@@ -142,19 +155,26 @@ export default function AnalyticsView() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
         {/* Card 1 — Gasto con YoY */}
-        <Card className="shadow-sm border-slate-200">
-          <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Gasto total {year}</p>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight">${focusGasto.toLocaleString('es-CL')}</div>
+        <Card className="shadow-sm border-slate-200 overflow-visible">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Gasto total {year}</p>
+              <div className="relative group">
+                <Info className="w-3.5 h-3.5 text-slate-300 cursor-help" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                  Suma de todas las facturas del año seleccionado según el enfoque activo. Verde = bajó el gasto, rojo = subió.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                </div>
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-800 tracking-tight">${focusGasto.toLocaleString('es-CL')}</div>
             {yoyPct !== null ? (
-              <div className={`flex items-center gap-1.5 mt-2 text-sm font-medium ${yoyPct > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
-                <span>{yoyPct > 0 ? '↑' : '↓'}</span>
-                <span>{yoyPct > 0 ? '+' : ''}{yoyPct.toFixed(1)}% vs {parseInt(year) - 1}</span>
-                <span className="text-slate-400 font-normal ml-1">
-                  ({yoyPct > 0 ? 'subió el gasto' : 'bajó el gasto'})
-                </span>
+              <div className={`inline-flex items-center gap-1.5 mt-2 text-sm font-semibold
+                ${yoyPct > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                {yoyPct > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {yoyPct > 0 ? '+' : ''}{yoyPct.toFixed(1)}% vs {parseInt(year) - 1}
               </div>
             ) : (
               <p className="text-sm text-slate-400 mt-2">Sin datos del año anterior</p>
@@ -163,43 +183,70 @@ export default function AnalyticsView() {
         </Card>
 
         {/* Card 2 — Toneladas con contexto y YoY */}
-        <Card className="shadow-sm border-slate-200">
-          <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">
-              {focus === 'domiciliary' ? 'Enviado a vertedero' : 'Reciclado este año'}
-            </p>
+        <Card className="shadow-sm border-slate-200 overflow-visible">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                {focus === 'domiciliary' ? 'Enviado a vertedero' : 'Reciclado este año'}
+              </p>
+              <div className="relative group">
+                <Info className="w-3.5 h-3.5 text-slate-300 cursor-help" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                  {focus === 'domiciliary'
+                    ? 'Toneladas de residuos domiciliarios enviadas a relleno sanitario durante el año.'
+                    : 'Toneladas de materiales enviados a planta de reciclaje, evitando el vertedero. Verde = más reciclaje que el año anterior.'}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                </div>
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-2">
-              <div className="text-3xl font-bold text-slate-800 tracking-tight">
+              <div className="text-2xl font-bold text-slate-800 tracking-tight">
                 {focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
               </div>
               {yoyTonsPct !== null && focus !== 'domiciliary' && (
-                <div className={`flex items-center gap-1 text-sm font-semibold mt-1 ${yoyTonsPct >= 0 ? 'text-teal-600' : 'text-rose-500'}`}>
-                  <span>{yoyTonsPct >= 0 ? '↑' : '↓'}</span>
-                  <span>{yoyTonsPct >= 0 ? '+' : ''}{yoyTonsPct.toFixed(1)}%</span>
-                  <span className="text-xs text-slate-400 font-normal">vs {parseInt(year) - 1}</span>
+                <div className={`inline-flex items-center gap-1.5 mt-1 text-sm font-semibold
+                  ${yoyTonsPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  {yoyTonsPct >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  {yoyTonsPct >= 0 ? '+' : ''}{yoyTonsPct.toFixed(1)}% vs {parseInt(year) - 1}
                 </div>
               )}
             </div>
             <p className="text-sm text-slate-400 mt-2">
               {focus !== 'domiciliary'
                 ? <>{focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t de un total de{' '}
-                    <span className="font-medium text-slate-600">
-                      {(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
-                    </span> de residuos no llegaron al vertedero</>
+                    <span className="font-medium text-slate-600">{(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t</span> no llegaron al vertedero</>
                 : <>{focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t de un total de{' '}
-                    <span className="font-medium text-slate-600">
-                      {(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
-                    </span> fueron a relleno sanitario</>
+                    <span className="font-medium text-slate-600">{(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t</span> fueron a relleno sanitario</>
               }
             </p>
           </CardContent>
         </Card>
 
-        {/* Card 3 — Share con explicación */}
-        <Card className="shadow-sm border-slate-200">
-          <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Tasa de valorización</p>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight">{shareReciclable}%</div>
+        {/* Card 3 — Tasa de valorización con YoY */}
+        <Card className="shadow-sm border-slate-200 overflow-visible">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Tasa de valorización</p>
+              <div className="relative group">
+                <Info className="w-3.5 h-3.5 text-slate-300 cursor-help" />
+                <div className="absolute bottom-full right-0 mb-2 w-60 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
+                  Porcentaje del total de residuos tratados que fue a reciclaje en vez de al vertedero. Cuanto más alto, mejor. Se mide en puntos porcentuales (pp) vs el año anterior.
+                  <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-800" />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-2xl font-bold text-slate-800 tracking-tight">{shareReciclable}%</div>
+              {yoyShareDiff !== null && (
+                <div className={`inline-flex items-center gap-1.5 mt-1 text-sm font-semibold
+                  ${yoyShareDiff >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  {yoyShareDiff >= 0
+                    ? <TrendingUp className="w-4.5 h-4.5" />
+                    : <TrendingDown className="w-4.5 h-4.5" />}
+                  {yoyShareDiff >= 0 ? '+' : ''}{yoyShareDiff.toFixed(1)}pp vs {parseInt(year) - 1}
+                </div>
+              )}
+            </div>
             <p className="text-sm text-slate-400 mt-2">
               De cada 100 t tratadas, <span className="font-semibold text-teal-600">{shareReciclable} t se reciclan</span> y evitan el vertedero
             </p>
@@ -207,16 +254,16 @@ export default function AnalyticsView() {
         </Card>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
         <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 flex flex-col">
-          <div className="p-6 pb-2">
-            <h3 className="text-base font-semibold text-slate-800">
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-semibold text-slate-700">
               Tendencia {focus === 'combined' ? 'combinada' : focus === 'domiciliary' ? 'domiciliaria' : 'reciclable'}
             </h3>
-            <p className="text-sm text-slate-500 mt-1">Gasto mensual apilado: domiciliario + reciclable.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Gasto mensual apilado: domiciliario + reciclable.</p>
           </div>
           <CardContent className="flex-1 mt-4 border-t border-slate-100 pb-4">
-            <ChartContainer config={chartConfig} className="h-[250px] w-full mt-4">
+            <ChartContainer config={chartConfig} className="h-[210px] w-full mt-4">
               <BarChart accessibilityLayer data={combinedMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
@@ -230,12 +277,12 @@ export default function AnalyticsView() {
         </Card>
         
         <Card className="shadow-sm border-slate-200 flex flex-col">
-          <div className="p-6 pb-2">
-            <h3 className="text-base font-semibold text-slate-800">Gasto total</h3>
-            <p className="text-sm text-slate-500 mt-1">Comparativo general.</p>
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-semibold text-slate-700">Gasto total</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Comparativo general.</p>
           </div>
           <CardContent className="flex-1 mt-4 border-t border-slate-100 pb-4">
-            <ChartContainer config={chartConfig} className="h-[250px] w-full mt-4">
+            <ChartContainer config={chartConfig} className="h-[210px] w-full mt-4">
               <BarChart accessibilityLayer data={historicalData} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
@@ -250,29 +297,34 @@ export default function AnalyticsView() {
 
         {focus !== 'domiciliary' && (
           <Card className="shadow-sm border-slate-200 flex flex-col">
-            <div className="p-6 pb-2">
-              <h3 className="text-base font-semibold text-slate-800">Distribución reciclables</h3>
-              <p className="text-sm text-slate-500 mt-1">Tons por categoría.</p>
+            <div className="p-4 pb-2">
+              <h3 className="text-sm font-semibold text-slate-700">Distribución reciclables</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Toneladas por categoría.</p>
             </div>
-            <CardContent className="flex-1 mt-4 border-t border-slate-100 pb-4 flex items-center justify-center">
-              {categories.length > 0 ? (
-                <ChartContainer config={{}} className="h-[200px] w-full">
+            <CardContent className="flex-1 mt-2 border-t border-slate-100 pb-2 flex items-center justify-center">
+              {categories.filter(c => c.tons > 0).length > 0 ? (
+                <ChartContainer config={{}} className="h-[220px] w-full">
                   <PieChart>
                     <Pie
-                      data={categories}
+                      data={categories.filter(c => c.tons > 0)}
                       dataKey="tons"
                       nameKey="label"
                       cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      cy="45%"
+                      innerRadius={50}
+                      outerRadius={70}
                       paddingAngle={2}
                     >
-                      {categories.map((_entry, index) => (
+                      {categories.filter(c => c.tons > 0).map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                       ))}
                     </Pie>
-                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                    <ChartTooltip formatter={(value: number) => [`${value.toFixed(3)} t`, '']} />
+                    <Legend
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(value) => <span className="text-xs text-slate-600">{value}</span>}
+                    />
                   </PieChart>
                 </ChartContainer>
               ) : (
@@ -284,33 +336,58 @@ export default function AnalyticsView() {
 
         {focus !== 'domiciliary' && (
           <Card className="shadow-sm border-slate-200 lg:col-span-2">
-            <div className="p-6 pb-2 flex justify-between items-center">
-              <h3 className="text-base font-semibold text-slate-800">Detalle por categoría</h3>
+            <div className="p-4 pb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Detalle por categoría</h3>
+              <span className="text-[10px] text-slate-400 italic">Monto y CLP/t distribuidos proporcionalmente por toneladas</span>
             </div>
             <CardContent className="p-0 border-t border-slate-100 overflow-hidden rounded-b-lg">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead className="font-semibold text-slate-700 h-10">Categoría</TableHead>
-                    <TableHead className="font-semibold text-slate-700 h-10 text-right">Kilos</TableHead>
-                    <TableHead className="font-semibold text-slate-700 h-10 text-right">Toneladas</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-9 text-xs">Categoría</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-9 text-right text-xs">Toneladas</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-9 text-right text-xs">% del total</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-9 text-right text-xs">Monto CLP</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-9 text-right text-xs">CLP / t</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {categories.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center text-slate-500">
+                      <TableCell colSpan={5} className="h-24 text-center text-slate-500">
                         Sin datos
                       </TableCell>
                     </TableRow>
                   ) : (
-                    categories.map((cat, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium text-slate-800">{cat.label}</TableCell>
-                        <TableCell className="text-right text-slate-600">{(cat.tons * 1000).toLocaleString('es-CL', {minimumFractionDigits: 0, maximumFractionDigits: 0})} kg</TableCell>
-                        <TableCell className="text-right text-slate-600">{cat.tons.toLocaleString('es-CL', {minimumFractionDigits: 3, maximumFractionDigits: 3})} t</TableCell>
-                      </TableRow>
-                    ))
+                    [...categories]
+                      .sort((a, b) => b.tons - a.tons)
+                      .map((cat, i) => {
+                        const totalTons = categories.reduce((s, c) => s + c.tons, 0)
+                        const pct = totalTons > 0 ? (cat.tons / totalTons * 100) : 0
+                        const clpPerTon = cat.tons > 0 ? Math.round(cat.amount / cat.tons) : null
+                        const isEmpty = cat.tons === 0
+                        return (
+                          <TableRow key={i} className={isEmpty ? 'opacity-35' : ''}>
+                            <TableCell className="font-medium text-slate-800 text-xs py-2">{cat.label}</TableCell>
+                            <TableCell className="text-right text-slate-600 text-xs py-2">
+                              {cat.tons.toLocaleString('es-CL', {minimumFractionDigits: 3, maximumFractionDigits: 3})} t
+                            </TableCell>
+                            <TableCell className="text-right text-xs py-2">
+                              {isEmpty ? <span className="text-slate-300">—</span> : (
+                                <span className="font-medium text-indigo-600">{pct.toFixed(1)}%</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-slate-600 text-xs py-2">
+                              {isEmpty ? <span className="text-slate-300">—</span> : `$${cat.amount.toLocaleString('es-CL')}`}
+                            </TableCell>
+                            <TableCell className="text-right text-xs py-2">
+                              {clpPerTon !== null
+                                ? <span className="font-medium text-teal-700">${clpPerTon.toLocaleString('es-CL')}</span>
+                                : <span className="text-slate-300">—</span>}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
                   )}
                 </TableBody>
               </Table>
