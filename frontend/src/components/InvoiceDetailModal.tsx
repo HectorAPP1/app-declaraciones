@@ -138,7 +138,7 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
         <div className={`overflow-hidden flex-1 flex ${previewUrl ? 'flex-col md:flex-row' : 'flex-col'}`}>
           {/* Metadata Sidebar (or full width if no doc) */}
           <div className={`overflow-y-auto px-8 py-4 ${previewUrl ? 'w-full md:w-1/3 border-r border-slate-100 flex-shrink-0' : 'w-full'}`}>
-            <div className={hasDoc ? 'flex flex-col gap-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-x-10 gap-y-6'}>
+            <div className={previewUrl ? 'flex flex-col gap-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-x-10 gap-y-6'}>
               
               {/* BLOCK 1: Datos & Montos */}
               <div className="flex flex-col gap-6">

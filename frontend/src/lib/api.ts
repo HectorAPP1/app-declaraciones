@@ -7,13 +7,25 @@ import type { AnalyticsData, CreateInvoicePayload, Invoice } from './types'
 const BASE = (import.meta.env.VITE_API_URL ?? '/api') as string
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
-  const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
-    ...opts,
-  })
+  let res: Response
+  try {
+    res = await fetch(BASE + path, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts,
+    })
+  } catch {
+    // Network error (no connection, server down, CORS, etc.)
+    // Do NOT log the raw error to avoid exposing the API URL
+    throw new Error('No se pudo conectar al servidor. Verifica tu conexión o que el backend esté activo.')
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`)
+    const msg = (body as { error?: string }).error
+    if (res.status === 401) throw new Error('Sesión expirada. Recarga la página.')
+    if (res.status === 403) throw new Error('No tienes permisos para realizar esta acción.')
+    if (res.status === 404) throw new Error('El recurso solicitado no existe.')
+    if (res.status >= 500) throw new Error('Error interno del servidor. Intenta nuevamente en unos momentos.')
+    throw new Error(msg ?? `Error inesperado (${res.status})`)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
