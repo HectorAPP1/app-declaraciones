@@ -13,6 +13,6 @@ jobs:
     steps:
       - name: Extend webapp expiry (run until 1 month from today)
         run: |
-          curl -s -f -X POST \
+          curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
             "https://www.pythonanywhere.com/api/v0/user/${{ secrets.PYTHONANYWHERE_USERNAME }}/webapps/${{ secrets.PYTHONANYWHERE_USERNAME }}.pythonanywhere.com/extend_expiry/" \
             -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}"
