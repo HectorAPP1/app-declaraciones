@@ -155,15 +155,20 @@ class InvoiceService:
             # Historical tracking (all years)
             y = dt.year
             if y not in historical:
-                historical[y] = {"domiciliario": 0.0, "reciclable": 0.0}
-            
+                historical[y] = {"domiciliario": 0.0, "reciclable": 0.0, "dom_tons": 0.0, "rec_tons": 0.0}
+
             invoice_type = invoice.get("type", "domiciliary")
             amount = self._invoice_amount(invoice)
-            
+            agg = invoice.get("aggregates") or {}
+            rt = agg.get("residue_totals") or {}
+            hist_tons = sum(rt.values()) if rt else 0.0
+
             if invoice_type == "domiciliary":
                 historical[y]["domiciliario"] += amount
+                historical[y]["dom_tons"] += hist_tons
             else:
                 historical[y]["reciclable"] += amount
+                historical[y]["rec_tons"] += hist_tons
 
             if target_year and dt.year != target_year:
                 continue
@@ -200,9 +205,11 @@ class InvoiceService:
 
         historical_list = [
             {
-                "name": str(y), 
-                "domiciliario": data["domiciliario"], 
-                "reciclable": data["reciclable"]
+                "name": str(y),
+                "domiciliario": data["domiciliario"],
+                "reciclable": data["reciclable"],
+                "dom_tons": round(data["dom_tons"], 3),
+                "rec_tons": round(data["rec_tons"], 3),
             }
             for y, data in sorted(historical.items())
         ]

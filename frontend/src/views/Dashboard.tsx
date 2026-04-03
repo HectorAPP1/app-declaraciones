@@ -9,13 +9,13 @@ import type { ChartConfig } from '@/components/ui/chart'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 const domConfig = {
-  gasto: { label: "Gasto", color: "#ef4444" },
-  toneladas: { label: "Toneladas", color: "#f87171" },
+  gasto:     { label: "Gasto",     color: "#6366f1" },
+  toneladas: { label: "Toneladas", color: "#818cf8" },
 } satisfies ChartConfig
 
 const recConfig = {
-  gasto: { label: "Gasto", color: "#10b981" },
-  toneladas: { label: "Toneladas", color: "#34d399" },
+  gasto:     { label: "Gasto",     color: "#0d9488" },
+  toneladas: { label: "Toneladas", color: "#2dd4bf" },
 } satisfies ChartConfig
 
 export default function DashboardView() {
@@ -80,40 +80,40 @@ export default function DashboardView() {
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm border-0 bg-indigo-50">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Domiciliarios (Gasto)</CardTitle>
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-indigo-500">Domiciliarios · Gasto</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-bold text-slate-800 tracking-tight">${domTotals.amount.toLocaleString('es-CL')}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Monto total anual</p>
+            <div className="text-2xl font-bold text-indigo-700 tracking-tight">${domTotals.amount.toLocaleString('es-CL')}</div>
+            <p className="text-[11px] text-indigo-400 mt-0.5 font-medium">Monto total anual</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm border-0 bg-indigo-50">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Domiciliarios (TON)</CardTitle>
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-indigo-500">Domiciliarios · Ton</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-bold text-slate-800 tracking-tight">{domTotals.tons.toLocaleString('es-CL', {minimumFractionDigits: 2, maximumFractionDigits: 2})} t</div>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Toneladas a relleno</p>
+            <div className="text-2xl font-bold text-indigo-700 tracking-tight">{domTotals.tons.toLocaleString('es-CL', {minimumFractionDigits: 2, maximumFractionDigits: 2})} t</div>
+            <p className="text-[11px] text-indigo-400 mt-0.5 font-medium">Toneladas a relleno</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm border-0 bg-teal-50">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Reciclables (Gasto)</CardTitle>
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-teal-600">Reciclables · Gasto</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-bold text-slate-800 tracking-tight">${recTotals.amount.toLocaleString('es-CL')}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Monto total anual</p>
+            <div className="text-2xl font-bold text-teal-700 tracking-tight">${recTotals.amount.toLocaleString('es-CL')}</div>
+            <p className="text-[11px] text-teal-400 mt-0.5 font-medium">Monto total anual</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm border-0 bg-teal-50">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Reciclables (TON)</CardTitle>
+            <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-teal-600">Reciclables · Ton</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-bold text-slate-800 tracking-tight">{recTotals.tons.toLocaleString('es-CL', {minimumFractionDigits: 2, maximumFractionDigits: 2})} t</div>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Toneladas valorizadas</p>
+            <div className="text-2xl font-bold text-teal-700 tracking-tight">{recTotals.tons.toLocaleString('es-CL', {minimumFractionDigits: 2, maximumFractionDigits: 2})} t</div>
+            <p className="text-[11px] text-teal-400 mt-0.5 font-medium">Toneladas valorizadas</p>
           </CardContent>
         </Card>
       </div>
@@ -125,10 +125,10 @@ export default function DashboardView() {
           </CardHeader>
           <CardContent className="flex-1 pb-4">
             <ChartContainer config={domConfig} className="h-[200px] w-full">
-              <AreaChart accessibilityLayer data={domMonthly} margin={{ left: -20, right: 12 }}>
+              <AreaChart accessibilityLayer data={domMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={v => `$${v/1000}k`} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${Math.round(v/1000)}k`} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
                 <Area dataKey="Gasto" type="monotone" fill="var(--color-gasto)" fillOpacity={0.4} stroke="var(--color-gasto)" />
               </AreaChart>
@@ -142,10 +142,10 @@ export default function DashboardView() {
           </CardHeader>
           <CardContent className="flex-1 pb-4">
             <ChartContainer config={domConfig} className="h-[200px] w-full">
-              <BarChart accessibilityLayer data={domMonthly} margin={{ left: -20, right: 12 }}>
+              <BarChart accessibilityLayer data={domMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
                 <Bar dataKey="Toneladas" fill="var(--color-toneladas)" radius={4} />
               </BarChart>
@@ -159,10 +159,10 @@ export default function DashboardView() {
           </CardHeader>
           <CardContent className="flex-1 pb-4">
             <ChartContainer config={recConfig} className="h-[200px] w-full">
-              <AreaChart accessibilityLayer data={recMonthly} margin={{ left: -20, right: 12 }}>
+              <AreaChart accessibilityLayer data={recMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={v => `$${v/1000}k`} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${Math.round(v/1000)}k`} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
                 <Area dataKey="Gasto" type="monotone" fill="var(--color-gasto)" fillOpacity={0.4} stroke="var(--color-gasto)" />
               </AreaChart>
@@ -176,10 +176,10 @@ export default function DashboardView() {
           </CardHeader>
           <CardContent className="flex-1 pb-4">
             <ChartContainer config={recConfig} className="h-[200px] w-full">
-              <BarChart accessibilityLayer data={recMonthly} margin={{ left: -20, right: 12 }}>
+              <BarChart accessibilityLayer data={recMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
                 <Bar dataKey="Toneladas" fill="var(--color-toneladas)" radius={4} />
               </BarChart>

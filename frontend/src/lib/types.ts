@@ -72,9 +72,11 @@ export interface AnalyticsData {
     categories: ResidueCategory[]
   }
   historical: {
-    name: string
+    name:         string
     domiciliario: number
-    reciclable: number
+    reciclable:   number
+    dom_tons:     number
+    rec_tons:     number
   }[]
 }
 

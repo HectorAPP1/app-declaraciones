@@ -16,8 +16,8 @@ import type { ChartConfig } from '@/components/ui/chart'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 const chartConfig = {
-  domiciliario: { label: "Domiciliario", color: "#ef4444" },
-  reciclable: { label: "Reciclable", color: "#10b981" },
+  domiciliario: { label: "Domiciliario", color: "#6366f1" },
+  reciclable:   { label: "Reciclable",   color: "#0d9488" },
 } satisfies ChartConfig
 
 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -78,7 +78,30 @@ export default function AnalyticsView() {
     : '0.0'
 
   const categories = data?.recyclable.categories || []
-  const pieColors = ['#10b981', '#34d399', '#6ee7b7', '#059669', '#047857', '#064e3b']
+  const pieColors = ['#0d9488', '#14b8a6', '#2dd4bf', '#0f766e', '#115e59', '#6366f1']
+
+  const prevYearGasto = useMemo(() => {
+    if (!data?.historical) return 0
+    const prev = data.historical.find(h => h.name === String(parseInt(year) - 1))
+    if (!prev) return 0
+    if (focus === 'combined') return prev.domiciliario + prev.reciclable
+    if (focus === 'domiciliary') return prev.domiciliario
+    return prev.reciclable
+  }, [data, year, focus])
+
+  const yoyPct = prevYearGasto > 0
+    ? ((focusGasto - prevYearGasto) / prevYearGasto * 100)
+    : null
+
+  const prevYearRecTons = useMemo(() => {
+    if (!data?.historical) return 0
+    const prev = data.historical.find(h => h.name === String(parseInt(year) - 1))
+    return prev?.rec_tons ?? 0
+  }, [data, year])
+
+  const yoyTonsPct = prevYearRecTons > 0
+    ? ((totalTonsRec - prevYearRecTons) / prevYearRecTons * 100)
+    : null
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
@@ -120,25 +143,66 @@ export default function AnalyticsView() {
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+        {/* Card 1 — Gasto con YoY */}
         <Card className="shadow-sm border-slate-200">
           <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Gasto total anual</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Gasto total {year}</p>
             <div className="text-3xl font-bold text-slate-800 tracking-tight">${focusGasto.toLocaleString('es-CL')}</div>
-            <p className="text-sm text-slate-400 mt-2">En {focus === 'combined' ? 'total' : focus === 'domiciliary' ? 'domiciliario' : 'reciclable'}</p>
+            {yoyPct !== null ? (
+              <div className={`flex items-center gap-1.5 mt-2 text-sm font-medium ${yoyPct > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                <span>{yoyPct > 0 ? '↑' : '↓'}</span>
+                <span>{yoyPct > 0 ? '+' : ''}{yoyPct.toFixed(1)}% vs {parseInt(year) - 1}</span>
+                <span className="text-slate-400 font-normal ml-1">
+                  ({yoyPct > 0 ? 'subió el gasto' : 'bajó el gasto'})
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 mt-2">Sin datos del año anterior</p>
+            )}
           </CardContent>
         </Card>
+
+        {/* Card 2 — Toneladas con contexto y YoY */}
         <Card className="shadow-sm border-slate-200">
           <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">{focus === 'domiciliary' ? 'Toneladas a relleno' : 'Toneladas valorizadas'}</p>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight">{focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t</div>
-            <p className="text-sm text-slate-400 mt-2">{focus === 'domiciliary' ? 'Envíos a vertedero' : 'Sujetas a valorización'}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">
+              {focus === 'domiciliary' ? 'Enviado a vertedero' : 'Reciclado este año'}
+            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-3xl font-bold text-slate-800 tracking-tight">
+                {focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
+              </div>
+              {yoyTonsPct !== null && focus !== 'domiciliary' && (
+                <div className={`flex items-center gap-1 text-sm font-semibold mt-1 ${yoyTonsPct >= 0 ? 'text-teal-600' : 'text-rose-500'}`}>
+                  <span>{yoyTonsPct >= 0 ? '↑' : '↓'}</span>
+                  <span>{yoyTonsPct >= 0 ? '+' : ''}{yoyTonsPct.toFixed(1)}%</span>
+                  <span className="text-xs text-slate-400 font-normal">vs {parseInt(year) - 1}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-slate-400 mt-2">
+              {focus !== 'domiciliary'
+                ? <>{focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t de un total de{' '}
+                    <span className="font-medium text-slate-600">
+                      {(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
+                    </span> de residuos no llegaron al vertedero</>
+                : <>{focusTons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t de un total de{' '}
+                    <span className="font-medium text-slate-600">
+                      {(totalTonsDom + totalTonsRec).toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t
+                    </span> fueron a relleno sanitario</>
+              }
+            </p>
           </CardContent>
         </Card>
+
+        {/* Card 3 — Share con explicación */}
         <Card className="shadow-sm border-slate-200">
           <CardContent className="p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Share reciclables</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1">Tasa de valorización</p>
             <div className="text-3xl font-bold text-slate-800 tracking-tight">{shareReciclable}%</div>
-            <p className="text-sm text-slate-400 mt-2">del total tratado</p>
+            <p className="text-sm text-slate-400 mt-2">
+              De cada 100 t tratadas, <span className="font-semibold text-teal-600">{shareReciclable} t se reciclan</span> y evitan el vertedero
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -149,18 +213,18 @@ export default function AnalyticsView() {
             <h3 className="text-base font-semibold text-slate-800">
               Tendencia {focus === 'combined' ? 'combinada' : focus === 'domiciliary' ? 'domiciliaria' : 'reciclable'}
             </h3>
-            <p className="text-sm text-slate-500 mt-1">Comparativo mensual de gasto.</p>
+            <p className="text-sm text-slate-500 mt-1">Gasto mensual apilado: domiciliario + reciclable.</p>
           </div>
           <CardContent className="flex-1 mt-4 border-t border-slate-100 pb-4">
             <ChartContainer config={chartConfig} className="h-[250px] w-full mt-4">
-              <AreaChart accessibilityLayer data={combinedMonthly} margin={{ left: -20, right: 12 }}>
+              <BarChart accessibilityLayer data={combinedMonthly} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={v => `$${v/1000}k`} />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-                {focus !== 'recyclable' && <Area dataKey="domiciliario" type="monotone" fill="var(--color-domiciliario)" fillOpacity={0.2} stroke="var(--color-domiciliario)" stackId="1" />}
-                {focus !== 'domiciliary' && <Area dataKey="reciclable" type="monotone" fill="var(--color-reciclable)" fillOpacity={0.6} stroke="var(--color-reciclable)" stackId="1" />}
-              </AreaChart>
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${Math.round(v/1000)}k`} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+                {focus !== 'recyclable' && <Bar dataKey="domiciliario" fill="var(--color-domiciliario)" stackId="a" radius={focus === 'domiciliary' ? [4,4,0,0] : [0,0,0,0]} />}
+                {focus !== 'domiciliary' && <Bar dataKey="reciclable" fill="var(--color-reciclable)" stackId="a" radius={[4,4,0,0]} />}
+              </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -172,10 +236,10 @@ export default function AnalyticsView() {
           </div>
           <CardContent className="flex-1 mt-4 border-t border-slate-100 pb-4">
             <ChartContainer config={chartConfig} className="h-[250px] w-full mt-4">
-              <BarChart accessibilityLayer data={historicalData} margin={{ left: -20, right: 12 }}>
+              <BarChart accessibilityLayer data={historicalData} margin={{ left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={v => `$${v/1000}k`} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${Math.round(v/1000)}k`} />
                 <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
                 {focus !== 'recyclable' && <Bar dataKey="domiciliario" fill="var(--color-domiciliario)" radius={[4, 4, 0, 0]} />}
                 {focus !== 'domiciliary' && <Bar dataKey="reciclable" fill="var(--color-reciclable)" radius={[4, 4, 0, 0]} />}
@@ -228,8 +292,8 @@ export default function AnalyticsView() {
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead className="font-semibold text-slate-700 h-10">Categoría</TableHead>
+                    <TableHead className="font-semibold text-slate-700 h-10 text-right">Kilos</TableHead>
                     <TableHead className="font-semibold text-slate-700 h-10 text-right">Toneladas</TableHead>
-                    <TableHead className="font-semibold text-slate-700 h-10 text-right">Monto</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -243,8 +307,8 @@ export default function AnalyticsView() {
                     categories.map((cat, i) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium text-slate-800">{cat.label}</TableCell>
-                        <TableCell className="text-right text-slate-600">{cat.tons.toLocaleString('es-CL', {minimumFractionDigits: 1, maximumFractionDigits: 1})} t</TableCell>
-                        <TableCell className="text-right text-slate-600">${cat.amount.toLocaleString('es-CL')}</TableCell>
+                        <TableCell className="text-right text-slate-600">{(cat.tons * 1000).toLocaleString('es-CL', {minimumFractionDigits: 0, maximumFractionDigits: 0})} kg</TableCell>
+                        <TableCell className="text-right text-slate-600">{cat.tons.toLocaleString('es-CL', {minimumFractionDigits: 3, maximumFractionDigits: 3})} t</TableCell>
                       </TableRow>
                     ))
                   )}
