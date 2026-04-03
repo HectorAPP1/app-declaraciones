@@ -50,19 +50,23 @@ const STEPS = [
 ]
 
 const MATERIALES_RECICLABLES = [
-  'Cartón corrugado',
-  'Mezcla de plásticos',
-  'Plástico PET',
-  'Plástico HDPE',
-  'Vidrio',
-  'Papel',
-  'Metales ferrosos',
-  'Aluminio',
-  'Otro',
+  { key: 'plastico',  label: 'Plástico' },
+  { key: 'carton',    label: 'Cartón' },
+  { key: 'papel',     label: 'Papel' },
+  { key: 'vidrio',    label: 'Vidrio' },
+  { key: 'metal',     label: 'Metales' },
+  { key: 'tetrapak',  label: 'Tetrapak' },
+  { key: 'organico',  label: 'Orgánico' },
+  { key: 'textil',    label: 'Textil' },
+  { key: 'raee',      label: 'RAEE' },
+  { key: 'otros',     label: 'Otros' },
 ]
 
+const getMaterialLabel = (key: string) =>
+  MATERIALES_RECICLABLES.find(m => m.key === key)?.label ?? key
+
 const emptyResiduo = (): ResiduoItem => ({
-  material: 'Cartón corrugado',
+  material: 'plastico',
   unit: 'kg',
   quantity: '',
   destination: 'Reciclaje',
@@ -125,11 +129,8 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
           amount: parseFloat(form.subtotal) || 0
         }
       ] : form.residuos.filter(r => r.quantity).map(r => ({
-          description: r.material,
-          residue_category: r.material.toLowerCase() === 'cartón' ? 'carton' :
-                            r.material.toLowerCase() === 'plástico' ? 'plastico' :
-                            r.material.toLowerCase() === 'orgánico' ? 'organico' :
-                            r.material.toLowerCase() === 'vidrio' ? 'vidrio' : 'otros',
+          description: getMaterialLabel(r.material),
+          residue_category: r.material,
           unit: r.unit.toUpperCase() as 'TON' | 'KG',
           quantity: parseFloat(r.quantity) || 0,
           amount: 0
@@ -361,7 +362,7 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
                           <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                           <SelectContent className="min-w-[200px]">
                             {MATERIALES_RECICLABLES.map(m => (
-                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                              <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -488,7 +489,7 @@ export default function InvoiceModal({ isOpen, onClose }: { isOpen: boolean; onC
                     <div className="space-y-2">
                       {form.residuos.filter(r => r.quantity).map((r, i) => (
                         <div key={i} className="flex justify-between items-center">
-                          <span className="text-slate-500">{r.material}</span>
+                          <span className="text-slate-500">{getMaterialLabel(r.material)}</span>
                           <div className="text-right">
                             <span className="font-bold text-slate-800">{r.quantity} {r.unit}</span>
                             <span className="text-xs text-slate-400 ml-2">→ {r.destination}</span>

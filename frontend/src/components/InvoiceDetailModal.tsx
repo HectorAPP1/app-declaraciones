@@ -157,16 +157,33 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
               <div className="flex flex-col gap-6">
                 <div>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Residuos</p>
-                  <div className="bg-slate-50 rounded-xl p-4 flex items-center gap-4">
-                    {isRecyclable
-                      ? <ArrowPathRoundedSquareIcon className="w-8 h-8 text-indigo-400 shrink-0" />
-                      : <TruckIcon className="w-8 h-8 text-slate-400 shrink-0" />
-                    }
-                    <div>
-                      <p className="text-xs text-slate-500 font-medium">{isRecyclable ? 'Materiales reciclados' : 'A relleno sanitario'}</p>
-                      <p className="text-2xl font-bold text-slate-800 mt-0.5">{invoice.residuos}</p>
+                  {isRecyclable && invoice._raw?.items?.length > 0 ? (
+                    <div className="bg-slate-50 rounded-xl p-3 flex flex-col gap-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ArrowPathRoundedSquareIcon className="w-5 h-5 text-indigo-400 shrink-0" />
+                        <p className="text-xs text-slate-500 font-medium">Materiales reciclados · {invoice.residuos}</p>
+                      </div>
+                      {(invoice._raw.items as any[]).map((item: any, i: number) => {
+                        const kg = item.unit === 'TON'
+                          ? (item.quantity_ton * 1000).toLocaleString('es-CL', { maximumFractionDigits: 0 })
+                          : Number(item.quantity).toLocaleString('es-CL', { maximumFractionDigits: 0 })
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs px-1">
+                            <span className="text-slate-700 font-medium capitalize">{item.description}</span>
+                            <span className="text-slate-500 font-mono">{kg} kg</span>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-slate-50 rounded-xl p-4 flex items-center gap-4">
+                      <TruckIcon className="w-8 h-8 text-slate-400 shrink-0" />
+                      <div>
+                        <p className="text-xs text-slate-500 font-medium">A relleno sanitario</p>
+                        <p className="text-2xl font-bold text-slate-800 mt-0.5">{invoice.residuos}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -200,13 +217,18 @@ export default function InvoiceDetailModal({ invoice, onClose }: Props) {
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Documentos adjuntos</p>
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/50">
-                    <FolderOpenIcon className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div className={`flex items-center gap-3 border rounded-xl p-3 ${hasDoc ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                    <FolderOpenIcon className={`w-5 h-5 shrink-0 ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`} />
                     <div>
-                      <p className="text-xs font-semibold text-slate-700">Factura PDF</p>
-                      <p className="text-xs text-slate-400">{invoice.id}_factura.pdf</p>
+                      <p className={`text-xs font-semibold ${hasDoc ? 'text-emerald-700' : 'text-slate-700'}`}>Factura PDF</p>
+                      <p className={`text-xs ${hasDoc ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        {hasDoc ? invoice._raw.document : 'No adjunto aún'}
+                      </p>
                     </div>
-                    <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto" title="No adjunto aún" />
+                    {hasDoc
+                      ? <DocumentCheckIcon className="w-4 h-4 text-emerald-500 ml-auto" title="Adjunto" />
+                      : <ExclamationTriangleIcon className="w-4 h-4 text-amber-400 ml-auto" title="No adjunto aún" />
+                    }
                   </div>
                   {isRecyclable && (
                     <div className="flex items-center gap-3 border border-indigo-100 rounded-xl p-3 bg-indigo-50/30">
