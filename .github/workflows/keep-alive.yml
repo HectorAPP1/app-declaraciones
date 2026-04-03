@@ -11,8 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Extend webapp expiry (run until 1 month from today)
+      - name: Reload webapp (mantiene actividad para evitar desactivación)
         run: |
-          curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
-            "https://www.pythonanywhere.com/api/v0/user/${{ secrets.PYTHONANYWHERE_USERNAME }}/webapps/${{ secrets.PYTHONANYWHERE_USERNAME }}.pythonanywhere.com/extend_expiry/" \
-            -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}"
+          response=$(curl -s -w "\nHTTP status: %{http_code}\n" -X POST \
+            "https://www.pythonanywhere.com/api/v0/user/${{ secrets.PYTHONANYWHERE_USERNAME }}/webapps/${{ secrets.PYTHONANYWHERE_USERNAME }}.pythonanywhere.com/reload/" \
+            -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}")
+          echo "$response"
+          http_status=$(echo "$response" | grep "HTTP status" | awk '{print $3}')
+          if [ "$http_status" != "200" ]; then
+            echo "Error: HTTP $http_status"
+            exit 1
+          fi
