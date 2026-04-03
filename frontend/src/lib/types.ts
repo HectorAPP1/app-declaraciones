@@ -35,7 +35,8 @@ export interface Invoice {
   items:          InvoiceItem[]
   totals:         InvoiceTotals
   aggregates?:    InvoiceAggregates
-  document?:      string        // filename on backend
+  document?:      string        // invoice PDF filename on backend
+  certificate?:   string        // recycling certificate PDF filename on backend
   payment_status: PaymentStatus
   payment_note:   string
   sinader_status: SinaderStatus

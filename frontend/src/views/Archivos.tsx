@@ -72,7 +72,7 @@ function downloadDocument(url: string, filename: string) {
 
 function DocumentViewerModal({ file, onClose }: { file: DocFile | null; onClose: () => void }) {
   if (!file) return null
-  const url = file.url ?? (file.id.includes('-') ? api.documentUrl(file.id) : null)
+  const url = file.url ?? null
 
   return (
     <Dialog open={!!file} onOpenChange={onClose}>
@@ -265,33 +265,41 @@ export default function ArchivosView() {
       const loaded: DocFile[] = []
 
       for (const inv of invoices) {
-        if (!inv.document) continue
-        
-        let folder: FolderKey = 'facturas2026'
         const year = inv.date ? new Date(inv.date).getFullYear() : new Date().getFullYear()
-        
-        const isCert = inv.document.toLowerCase().includes('cert') || inv.provider.toLowerCase().includes('cert')
-        
-        if (inv.provider.toUpperCase() === 'SINADER' || inv.document.toLowerCase().includes('sinader')) {
-          folder = 'sinader'
-        } else if (isCert) {
-          folder = 'certificados'
-        } else if (year === 2024) {
-          folder = 'facturas2024'
-        } else if (year === 2025) {
-          folder = 'facturas2025'
-        } else {
-          folder = 'facturas2026'
+        const dateStr = new Date(inv.updated_at || inv.created_at || inv.date || Date.now()).toLocaleDateString('es-CL')
+        const isSinader = inv.provider.toUpperCase() === 'SINADER'
+
+        // Invoice document
+        if (inv.document) {
+          let folder: FolderKey = 'facturas2026'
+          if (isSinader) {
+            folder = 'sinader'
+          } else if (year === 2024) {
+            folder = 'facturas2024'
+          } else if (year === 2025) {
+            folder = 'facturas2025'
+          }
+          loaded.push({
+            id: `${inv.id}__invoice`,
+            name: inv.document,
+            folder,
+            date: dateStr,
+            size: 'PDF',
+            url: api.documentUrl(inv.id),
+          })
         }
 
-        loaded.push({
-          id: inv.id,
-          name: inv.document,
-          folder,
-          date: new Date(inv.updated_at || inv.created_at || inv.date || Date.now()).toLocaleDateString('es-CL'),
-          size: 'PDF',
-          url: api.documentUrl(inv.id)
-        })
+        // Certificate document (recyclable invoices)
+        if (inv.certificate) {
+          loaded.push({
+            id: `${inv.id}__cert`,
+            name: inv.certificate,
+            folder: 'certificados',
+            date: dateStr,
+            size: 'PDF',
+            url: api.certificateUrl(inv.id),
+          })
+        }
       }
       setFiles(loaded)
     } catch (e) {
@@ -515,7 +523,7 @@ export default function ArchivosView() {
                           title="Descargar"
                           className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                           onClick={() => {
-                            const url = file.url ?? (file.id.includes('-') ? api.documentUrl(file.id) : null)
+                            const url = file.url ?? null
                             if (url) downloadDocument(url, file.name)
                           }}
                         >
