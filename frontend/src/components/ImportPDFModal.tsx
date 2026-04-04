@@ -32,6 +32,50 @@ const MATERIALES = [
 type Stage = 'select' | 'loading' | 'preview'
 type InvoiceType = 'domiciliary' | 'recyclable'
 
+// ─── OCR confidence score ─────────────────────────────────────────────────────
+
+interface ConfidenceBreakdown {
+  score:   number   // 0–100
+  checks:  { label: string; pts: number; max: number; ok: boolean }[]
+}
+
+function calcConfidence(form: OcrResult): ConfidenceBreakdown {
+  const checks = [
+    {
+      label: 'N° Factura',
+      max: 30,
+      ok: !!form.number?.trim(),
+      pts: form.number?.trim() ? 30 : 0,
+    },
+    {
+      label: 'Fecha',
+      max: 25,
+      ok: form.date_confidence === 'high',
+      pts: form.date_confidence === 'high' ? 25 : form.date_confidence === 'medium' ? 15 : 5,
+    },
+    {
+      label: 'Proveedor',
+      max: 20,
+      ok: !!form.provider?.trim(),
+      pts: form.provider?.trim() ? 20 : 0,
+    },
+    {
+      label: 'Ítems',
+      max: 15,
+      ok: form.items.length > 0,
+      pts: form.items.length > 0 ? 15 : 0,
+    },
+    {
+      label: 'Totales',
+      max: 10,
+      ok: form.totals.total > 0,
+      pts: form.totals.total > 0 ? 10 : 0,
+    },
+  ]
+  const score = checks.reduce((s, c) => s + c.pts, 0)
+  return { score, checks }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ImportPDFModal({
@@ -178,6 +222,20 @@ export default function ImportPDFModal({
             <DialogTitle className="text-xl font-bold text-slate-900">
               Importar factura desde PDF
             </DialogTitle>
+            {stage === 'preview' && form && (() => {
+              const { score } = calcConfidence(form)
+              const color = score >= 90
+                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                : score >= 70
+                  ? 'bg-amber-100 text-amber-700 border-amber-200'
+                  : 'bg-red-100 text-red-700 border-red-200'
+              const dot = score >= 90 ? '🟢' : score >= 70 ? '🟡' : '🔴'
+              return (
+                <span className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full border ${color}`}>
+                  {dot} {score}% confianza
+                </span>
+              )
+            })()}
           </div>
         </DialogHeader>
 
@@ -289,13 +347,36 @@ export default function ImportPDFModal({
           {stage === 'preview' && form && (
             <div className="grid gap-5">
 
-              {/* Date warning */}
-              {form.date_confidence !== 'high' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-                  <span className="font-semibold">Fecha con confianza {form.date_confidence}:</span>{' '}
-                  {form.date_notes ?? 'Revisa que la fecha sea correcta antes de guardar.'}
-                </div>
-              )}
+              {/* Confidence breakdown */}
+              {(() => {
+                const { score, checks } = calcConfidence(form)
+                const failed = checks.filter(c => !c.ok)
+                const bgColor = score >= 90 ? 'bg-emerald-50 border-emerald-200' : score >= 70 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'
+                const textColor = score >= 90 ? 'text-emerald-800' : score >= 70 ? 'text-amber-800' : 'text-red-800'
+                const barColor = score >= 90 ? 'bg-emerald-500' : score >= 70 ? 'bg-amber-400' : 'bg-red-500'
+                return (
+                  <div className={`border rounded-xl px-4 py-3 space-y-2 ${bgColor}`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-semibold ${textColor}`}>
+                        {score >= 90 ? 'Extracción completa' : score >= 70 ? 'Revisión recomendada' : 'Requiere revisión manual'}
+                      </p>
+                      <span className={`text-sm font-bold ${textColor}`}>{score}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/60 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${score}%` }} />
+                    </div>
+                    {failed.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        {failed.map(c => (
+                          <span key={c.label} className={`text-xs font-medium px-2 py-0.5 rounded-md bg-white/70 ${textColor}`}>
+                            ⚠ {c.label} no detectado
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Certificate notice */}
               {certFile && form.type === 'recyclable' && (
@@ -307,11 +388,19 @@ export default function ImportPDFModal({
               {/* Basic fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">N° Factura</label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    N° Factura
+                    {!form.number && <span className="text-red-500 ml-1">*</span>}
+                  </label>
                   <Input
                     value={form.number}
                     onChange={e => setField('number', e.target.value)}
+                    className={!form.number ? 'border-red-300 focus-visible:ring-red-400 bg-red-50' : ''}
+                    placeholder="Ingresa el número de factura"
                   />
+                  {!form.number && (
+                    <p className="text-xs text-red-500">Requerido — revisa el PDF con el botón "Ver factura"</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Fecha</label>
@@ -539,7 +628,8 @@ export default function ImportPDFModal({
               </div>
               <Button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || !form?.number}
+                title={!form?.number ? 'Completa el N° de factura antes de guardar' : undefined}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm px-6"
               >
                 {saving ? 'Guardando…' : '✓ Guardar Factura'}
