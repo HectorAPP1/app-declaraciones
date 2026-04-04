@@ -315,8 +315,8 @@ export default function ImportPDFModal({
                   <div className="col-span-4 space-y-0.5">
                     <label className="text-xs text-gray-400">Categoría</label>
                     <Select
-                      value={item.residue_category}
-                      onValueChange={v => setItem(i, 'residue_category', v)}
+                      value={item.residue_category ?? ''}
+                      onValueChange={v => setItem(i, 'residue_category', v as string)}
                     >
                       <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
@@ -333,7 +333,7 @@ export default function ImportPDFModal({
                   </div>
                   <div className="col-span-2 space-y-0.5">
                     <label className="text-xs text-gray-400">Unidad</label>
-                    <Select value={item.unit} onValueChange={v => setItem(i, 'unit', v)}>
+                    <Select value={item.unit ?? 'TON'} onValueChange={v => setItem(i, 'unit', v as string)}>
                       <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
                       </SelectTrigger>

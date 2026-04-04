@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -218,10 +219,11 @@ export default function InvoiceModal({ isOpen, onClose, editInvoice }: {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs h-8"
+                className="text-xs h-8 gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                 onClick={() => setShowImport(true)}
               >
-                Importar desde PDF
+                <Sparkles size={13} />
+                Cargar con IA
               </Button>
             )}
           </div>
