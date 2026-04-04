@@ -94,9 +94,15 @@ export const api = {
   // ─── OCR ────────────────────────────────────────────────────────────────────
 
   /** Parse a PDF invoice using AI — returns extracted + normalized data */
-  parsePdf: (file: File): Promise<OcrResult> => {
+  parsePdf: (
+    file: File,
+    invoiceType?: 'domiciliary' | 'recyclable',
+    certificateFile?: File,
+  ): Promise<OcrResult> => {
     const fd = new FormData()
     fd.append('file', file)
+    if (invoiceType)      fd.append('invoice_type', invoiceType)
+    if (certificateFile)  fd.append('certificate', certificateFile)
     return req<OcrResult>('/invoices/parse-pdf', {
       method:  'POST',
       headers: {},

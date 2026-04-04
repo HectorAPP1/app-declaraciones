@@ -29,7 +29,57 @@ const MATERIALES = [
 const fmt = (n: number) =>
   n.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
+// ─── File drop zone ────────────────────────────────────────────────────────────
+
+function FileZone({
+  file,
+  label,
+  sublabel,
+  accept = '.pdf',
+  fileRef,
+  onChange,
+}: {
+  file: File | null
+  label: string
+  sublabel?: string
+  accept?: string
+  fileRef: React.RefObject<HTMLInputElement | null>
+  onChange: (f: File) => void
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+      <div
+        className="border-2 border-dashed border-gray-200 rounded-lg p-5 text-center cursor-pointer hover:border-gray-300 transition-colors"
+        onClick={() => fileRef.current?.click()}
+      >
+        {file ? (
+          <div className="space-y-0.5">
+            <p className="font-medium text-sm text-gray-700">{file.name}</p>
+            <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(0)} KB</p>
+          </div>
+        ) : (
+          <div className="space-y-0.5">
+            <p className="text-sm text-gray-400">Haz clic para seleccionar</p>
+            {sublabel && <p className="text-xs text-gray-300">{sublabel}</p>}
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) onChange(f) }}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
+
+type Stage = 'select' | 'loading' | 'preview'
+type InvoiceType = 'domiciliary' | 'recyclable'
 
 export default function ImportPDFModal({
   isOpen,
@@ -40,47 +90,49 @@ export default function ImportPDFModal({
   onClose:   () => void
   onSuccess: () => void
 }) {
-  const [stage, setStage]     = useState<'upload' | 'loading' | 'preview'>('upload')
-  const [error, setError]     = useState<string | null>(null)
-  const [saving, setSaving]   = useState(false)
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [raw, setRaw]         = useState<OcrResult | null>(null)
-  const [form, setForm]       = useState<OcrResult | null>(null)
-  const fileRef               = useRef<HTMLInputElement>(null)
+  const [stage, setStage]           = useState<Stage>('select')
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>('domiciliary')
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
+  const [certFile, setCertFile]     = useState<File | null>(null)
+  const [error, setError]           = useState<string | null>(null)
+  const [saving, setSaving]         = useState(false)
+  const [raw, setRaw]               = useState<OcrResult | null>(null)
+  const [form, setForm]             = useState<OcrResult | null>(null)
+
+  const invoiceRef = useRef<HTMLInputElement>(null)
+  const certRef    = useRef<HTMLInputElement>(null)
 
   const reset = () => {
-    setStage('upload')
+    setStage('select')
+    setInvoiceType('domiciliary')
+    setInvoiceFile(null)
+    setCertFile(null)
     setError(null)
     setSaving(false)
-    setPdfFile(null)
     setRaw(null)
     setForm(null)
   }
 
-  const handleClose = () => {
-    reset()
-    onClose()
-  }
+  const handleClose = () => { reset(); onClose() }
 
-  // ── Upload & parse ───────────────────────────────────────────────────────────
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) setPdfFile(file)
-  }
+  // ── Parse ────────────────────────────────────────────────────────────────────
 
   const handleParse = async () => {
-    if (!pdfFile) return
+    if (!invoiceFile) return
     setStage('loading')
     setError(null)
     try {
-      const result = await api.parsePdf(pdfFile)
+      const result = await api.parsePdf(
+        invoiceFile,
+        invoiceType,
+        invoiceType === 'recyclable' ? certFile ?? undefined : undefined,
+      )
       setRaw(result)
       setForm(structuredClone(result))
       setStage('preview')
     } catch (e: any) {
       setError(e.message ?? 'Error al analizar el PDF')
-      setStage('upload')
+      setStage('select')
     }
   }
 
@@ -122,7 +174,7 @@ export default function ImportPDFModal({
   // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form || !pdfFile) return
+    if (!form || !invoiceFile) return
     setSaving(true)
     setError(null)
     try {
@@ -137,10 +189,15 @@ export default function ImportPDFModal({
         totals:   form.totals,
       } as any)
 
-      // 2. Upload PDF
-      await api.uploadDocument(invoice.id, pdfFile, 'invoice')
+      // 2. Upload invoice PDF
+      await api.uploadDocument(invoice.id, invoiceFile, 'invoice')
 
-      // 3. Learn corrections if user changed anything
+      // 3. Upload certificate PDF (recyclable only)
+      if (certFile && form.type === 'recyclable') {
+        await api.uploadDocument(invoice.id, certFile, 'certificate')
+      }
+
+      // 4. Learn corrections if user changed anything
       if (raw && (
         raw.provider !== form.provider ||
         JSON.stringify(raw.items) !== JSON.stringify(form.items)
@@ -168,39 +225,53 @@ export default function ImportPDFModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* ── Stage: upload ── */}
-        {stage === 'upload' && (
+        {/* ── Stage: select ── */}
+        {stage === 'select' && (
           <div className="space-y-4 py-4">
             <p className="text-sm text-gray-500">
-              Sube el PDF de la factura y el sistema extraerá los datos automáticamente
-              usando los proveedores y categorías ya registradas como referencia.
+              Indica el tipo de factura y sube los archivos PDF.
+              La IA extraerá los datos automáticamente.
             </p>
 
-            <div
-              className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center cursor-pointer hover:border-gray-300 transition-colors"
-              onClick={() => fileRef.current?.click()}
-            >
-              {pdfFile ? (
-                <div className="space-y-1">
-                  <p className="font-medium text-sm">{pdfFile.name}</p>
-                  <p className="text-xs text-gray-400">
-                    {(pdfFile.size / 1024).toFixed(0)} KB
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Haz clic para seleccionar un PDF</p>
-                  <p className="text-xs text-gray-400">Solo archivos .pdf</p>
-                </div>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+            {/* Type selector */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-500">Tipo de factura</label>
+              <div className="flex gap-2">
+                {(['domiciliary', 'recyclable'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => { setInvoiceType(t); setCertFile(null) }}
+                    className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      invoiceType === t
+                        ? 'border-gray-700 bg-gray-700 text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {t === 'domiciliary' ? '🏘 Domiciliario' : '♻️ Reciclable'}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Invoice PDF */}
+            <FileZone
+              file={invoiceFile}
+              label="PDF de factura (requerido)"
+              sublabel="Solo archivos .pdf"
+              fileRef={invoiceRef}
+              onChange={setInvoiceFile}
+            />
+
+            {/* Certificate PDF — only for recyclable */}
+            {invoiceType === 'recyclable' && (
+              <FileZone
+                file={certFile}
+                label="PDF de certificado de reciclaje (opcional)"
+                sublabel="Si tienes el certificado, súbelo para mejorar la extracción"
+                fileRef={certRef}
+                onChange={setCertFile}
+              />
+            )}
 
             {error && (
               <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded">{error}</p>
@@ -208,8 +279,8 @@ export default function ImportPDFModal({
 
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={handleClose}>Cancelar</Button>
-              <Button onClick={handleParse} disabled={!pdfFile}>
-                Analizar PDF
+              <Button onClick={handleParse} disabled={!invoiceFile}>
+                Analizar con IA
               </Button>
             </div>
           </div>
@@ -219,11 +290,11 @@ export default function ImportPDFModal({
         {stage === 'loading' && (
           <div className="py-12 text-center space-y-3">
             <div className="inline-block w-8 h-8 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin" />
-            <p className="text-sm text-gray-500">
-              Analizando PDF con IA…
-            </p>
+            <p className="text-sm text-gray-500">Analizando PDF con IA…</p>
             <p className="text-xs text-gray-400">
-              Consultando proveedores y categorías registradas
+              {invoiceType === 'recyclable' && certFile
+                ? 'Procesando factura y certificado'
+                : 'Consultando proveedores y categorías registradas'}
             </p>
           </div>
         )}
@@ -236,6 +307,13 @@ export default function ImportPDFModal({
               <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 text-xs text-amber-800">
                 <span className="font-semibold">Fecha con confianza {form.date_confidence}:</span>{' '}
                 {form.date_notes ?? 'Revisa que la fecha sea correcta antes de guardar.'}
+              </div>
+            )}
+
+            {/* Certificate notice */}
+            {certFile && form.type === 'recyclable' && (
+              <div className="bg-green-50 border border-green-200 rounded px-3 py-2 text-xs text-green-800">
+                Certificado adjunto: <span className="font-medium">{certFile.name}</span> — se subirá junto con la factura.
               </div>
             )}
 
@@ -399,6 +477,11 @@ export default function ImportPDFModal({
               <Badge variant="outline" className="text-xs">
                 {form.items.length} ítem{form.items.length !== 1 ? 's' : ''}
               </Badge>
+              {certFile && form.type === 'recyclable' && (
+                <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                  + certificado
+                </Badge>
+              )}
             </div>
 
             {error && (

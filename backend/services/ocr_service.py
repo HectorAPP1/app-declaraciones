@@ -69,7 +69,12 @@ class OCRService:
     # Public API
     # ------------------------------------------------------------------ #
 
-    def parse_pdf(self, pdf_bytes: bytes) -> Dict[str, Any]:
+    def parse_pdf(
+        self,
+        pdf_bytes: bytes,
+        invoice_type: str | None = None,
+        certificate_bytes: bytes | None = None,
+    ) -> Dict[str, Any]:
         """Extrae y normaliza datos de una factura PDF. Retorna dict para preview."""
         if not HAS_PDFPLUMBER:
             raise RuntimeError(
@@ -83,9 +88,15 @@ class OCRService:
                 "¿Es un PDF escaneado sin capa de texto?"
             )
 
+        # If a certificate PDF was provided, append its text as extra context
+        if certificate_bytes:
+            cert_text = self._extract_text(certificate_bytes)
+            if cert_text.strip():
+                text += "\n\n--- CERTIFICADO DE RECICLAJE ---\n" + cert_text
+
         context = self._build_context()
         hints   = self._load_hints()
-        result  = self._call_ai(text, context, hints)
+        result  = self._call_ai(text, context, hints, invoice_type=invoice_type)
         return result
 
     def learn_correction(self, raw: Dict[str, Any], corrected: Dict[str, Any]) -> None:
@@ -203,6 +214,7 @@ class OCRService:
         text: str,
         context: Dict[str, Any],
         hints: Dict[str, Any],
+        invoice_type: str | None = None,
     ) -> Dict[str, Any]:
 
         # ── Sección de proveedores conocidos ──────────────────────────────
@@ -246,7 +258,27 @@ class OCRService:
         valid_domiciliary  = ", ".join(DOMICILIARY_RESIDUES.keys())
         date_range = context.get("date_range", {})
 
-        prompt = f"""Eres un extractor experto de facturas de gestión de residuos en Chile.
+        # Type hint from user selection
+        if invoice_type == "recyclable":
+            type_hint_block = (
+                "\n══════════════════════════════════════════════════════\n"
+                "TIPO DE FACTURA CONFIRMADO POR EL USUARIO\n"
+                "══════════════════════════════════════════════════════\n"
+                'El usuario indicó que es una factura RECICLABLE. Usa type="recyclable" y\n'
+                "solo categorías reciclables para los ítems.\n"
+            )
+        elif invoice_type == "domiciliary":
+            type_hint_block = (
+                "\n══════════════════════════════════════════════════════\n"
+                "TIPO DE FACTURA CONFIRMADO POR EL USUARIO\n"
+                "══════════════════════════════════════════════════════\n"
+                'El usuario indicó que es una factura DOMICILIARIA. Usa type="domiciliary"\n'
+                'y residue_category="relleno_sanitario" para todos los ítems.\n'
+            )
+        else:
+            type_hint_block = ""
+
+        prompt = f"""Eres un extractor experto de facturas de gestión de residuos en Chile.{type_hint_block}
 Tu tarea es analizar el texto de un PDF y devolver un JSON estructurado con los datos de la factura.
 
 ══════════════════════════════════════════════════════
@@ -351,21 +383,52 @@ Devuelve ÚNICAMENTE JSON válido (sin markdown, sin explicaciones):
 
         content = data["choices"][0]["message"]["content"].strip()
 
-        # Limpiar bloque markdown si el modelo lo incluye
-        if content.startswith("```"):
-            parts = content.split("```")
-            content = parts[1] if len(parts) > 1 else content
-            if content.startswith("json"):
-                content = content[4:]
-            content = content.strip()
+        return self._extract_json(content)
 
+    # ------------------------------------------------------------------ #
+    # JSON extraction (handles thinking models that write reasoning first)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _extract_json(content: str) -> Dict[str, Any]:
+        """
+        Robustly extract a JSON object from model output.
+        Handles:
+        - Pure JSON responses
+        - Markdown code blocks (```json ... ```)
+        - Thinking models that write reasoning before/after the JSON
+        """
+        import re
+
+        # 1. Try direct parse
         try:
             return json.loads(content)
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"El AI devolvió JSON inválido: {exc}\n"
-                f"Contenido (primeros 500 chars): {content[:500]}"
-            ) from exc
+        except json.JSONDecodeError:
+            pass
+
+        # 2. Strip markdown code blocks
+        md_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', content)
+        if md_match:
+            candidate = md_match.group(1).strip()
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        # 3. Find first '{' and last '}' — handles reasoning text before/after JSON
+        start = content.find('{')
+        end   = content.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            candidate = content[start:end + 1]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError(
+            f"El AI no devolvió JSON válido.\n"
+            f"Contenido (primeros 500 chars): {content[:500]}"
+        )
 
     # ------------------------------------------------------------------ #
     # Hints persistence

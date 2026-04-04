@@ -111,9 +111,22 @@ def create_app() -> Flask:
         file = request.files["file"]
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             return jsonify({"error": "El archivo debe ser un PDF"}), 400
+
+        invoice_type = request.form.get("invoice_type") or None  # 'domiciliary' | 'recyclable'
+
+        cert_bytes = None
+        if "certificate" in request.files:
+            cert_file = request.files["certificate"]
+            if cert_file.filename and cert_file.filename.lower().endswith(".pdf"):
+                cert_bytes = cert_file.read()
+
         try:
             pdf_bytes = file.read()
-            result = ocr_service.parse_pdf(pdf_bytes)
+            result = ocr_service.parse_pdf(
+                pdf_bytes,
+                invoice_type=invoice_type,
+                certificate_bytes=cert_bytes,
+            )
             return jsonify(result), 200
         except (RuntimeError, ValueError) as e:
             return jsonify({"error": str(e)}), 422
