@@ -313,32 +313,48 @@ REGLAS DE NORMALIZACIÓN DE PROVEEDOR
 3. Nunca mezcles formatos: o todo mayúsculas, o Title Case, no mezcles.
 
 ══════════════════════════════════════════════════════
-REGLAS PARA EL NÚMERO DE FACTURA
+REGLA 1 — NÚMERO DE FACTURA (FOLIO)
 ══════════════════════════════════════════════════════
-El número de factura en Chile aparece como "Folio", "N°", "Nº", "Número" o simplemente
-como un número prominente en el encabezado del documento (ej: "14788", "Folio: 4638").
-Busca ese valor y devuélvelo como string sin ceros a la izquierda innecesarios.
-Si no aparece, devuelve null.
+Las facturas electrónicas chilenas tienen un campo "Folio N°" o "N°" en el encabezado
+superior derecho. Es un número entero (ej: 14788, 4638, 1023).
+- Busca el patrón: "Folio", "N°", "Nº", "Número", o un número de 3-6 dígitos destacado
+  en el encabezado.
+- Devuélvelo SIEMPRE como string (ej: "14788"). Si realmente no aparece, devuelve null.
 
 ══════════════════════════════════════════════════════
-REGLAS CRÍTICAS — ÍTEMS A INCLUIR
+REGLA 2 — ÍTEMS: SOLO RESIDUOS CON UNIDAD DE PESO
 ══════════════════════════════════════════════════════
-SOLO incluye ítems que representen cantidades físicas de RESIDUOS transportados o dispuestos.
+INSTRUCCIÓN ABSOLUTA: Incluye en "items" ÚNICAMENTE las líneas de la factura donde
+la unidad de medida (columna UM o Unidad) sea una medida de PESO o MASA:
+  TONELADAS, TON, KG, KILOGRAMOS, KGS
 
-INCLUIR:
-- Disposición de residuos / residuos industriales asimilables (unidad: TON o KG)
-- Retiro de residuos sólidos domiciliarios (unidad: TON)
-- Materiales reciclables (plástico, cartón, metal, etc.) (unidad: TON o KG)
+CUALQUIER línea con otra unidad → IGNORAR COMPLETAMENTE:
+  CONTENEDOR, RETIRO, UNIDAD, UN, C/U, SERVICIO, FLETE, HRS, DÍAS → NO incluir
 
-EXCLUIR (NO incluir en "items"):
-- Arriendo de tolva, contenedor, bins, compactador u otro equipo
-- Retiro de equipo / retiro de tolva / devolución de contenedor
-- Flete, transporte de equipo, despacho
-- Cargo de servicio, administración, otros cobros que no sean residuos
-- Cualquier ítem cuya unidad sea CONTENEDOR, RETIRO, UNIDAD, SERVICIO u otra no física
+Ejemplos de lo que EXCLUIR (aunque tenga un monto):
+  ✗ "ARRIENDO TOLVA 14M3" — unidad: CONTENEDOR
+  ✗ "RETIRO AMPLIROLL TOLVA" — unidad: RETIRO
+  ✗ "FLETE" — unidad: VIAJE
+  ✗ "CARGO ADMINISTRATIVO" — unidad: SERVICIO
 
-En facturas domiciliarias: normalmente habrá UN SOLO ítem (la disposición de residuos).
-Si hay duda, prefiere incluir menos ítems antes que incluir servicios incorrectos.
+Ejemplos de lo que INCLUIR:
+  ✓ "DISPOSICION RESIDUOS INDUSTRIALES ASIMILABLES" — unidad: TONELADAS → incluir
+  ✓ "RETIRO RESIDUOS SOLIDOS DOMICILIARIOS" — unidad: TON → incluir
+  ✓ "CARTON" — unidad: KG → incluir
+
+En facturas DOMICILIARIAS habrá típicamente UN SOLO ítem de residuos.
+
+══════════════════════════════════════════════════════
+REGLA 3 — MONTOS EN PESOS CHILENOS (CLP)
+══════════════════════════════════════════════════════
+En Chile el punto (.) es separador de miles y la coma (,) es decimal.
+Ejemplo: "328.100" = trescientos veintiocho mil cien = 328100 en JSON.
+NUNCA interpretes "328.100" como 328.1 — eso es incorrecto.
+- Si la factura muestra montos en $ (pesos): usa esos valores → currency="CLP"
+- Si la factura muestra montos en UF: usa esos valores → currency="UF"
+- Si muestra ambos: prefiere los $ (pesos) → currency="CLP"
+- Los subtotales, IVA y total deben ser números enteros grandes (ej: 328100, 62339, 390439)
+  no decimales pequeños como 328.1
 
 ══════════════════════════════════════════════════════
 CATEGORÍAS DE RESIDUOS VÁLIDAS
