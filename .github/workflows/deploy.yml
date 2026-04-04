@@ -21,7 +21,7 @@ jobs:
           upload() {
             local src="$1"
             echo "→ $src"
-            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
               "https://www.pythonanywhere.com/api/v0/user/$PA_USER/files/path/home/$PA_USER/app-declaraciones/$src" \
               -H "Authorization: Token $PA_TOKEN" \
               -F "content=@$src")
