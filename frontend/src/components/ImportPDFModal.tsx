@@ -289,6 +289,30 @@ export default function ImportPDFModal({
           {stage === 'preview' && form && (
             <div className="grid gap-5">
 
+              {/* PDF viewer buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {invoiceFile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 text-slate-600 border-slate-200 bg-white"
+                    onClick={() => window.open(URL.createObjectURL(invoiceFile), '_blank')}
+                  >
+                    📄 Ver factura
+                  </Button>
+                )}
+                {certFile && form.type === 'recyclable' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 text-emerald-700 border-emerald-200 bg-emerald-50"
+                    onClick={() => window.open(URL.createObjectURL(certFile), '_blank')}
+                  >
+                    ♻️ Ver certificado
+                  </Button>
+                )}
+              </div>
+
               {/* Date warning */}
               {form.date_confidence !== 'high' && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
