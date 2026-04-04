@@ -191,7 +191,7 @@ TOOLS: List[Dict[str, Any]] = [
 
 class AIService:
     OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-    DEFAULT_MODEL = "nousresearch/hermes-3-llama-3.1-405b:free"
+    DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
     MAX_TOOL_ROUNDS = 4
 
     def __init__(self, invoice_service) -> None:
