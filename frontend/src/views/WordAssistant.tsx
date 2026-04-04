@@ -77,7 +77,7 @@ async function exportMessageToPdf(element: HTMLElement) {
   ])
 
   // html-to-image uses SVG foreignObject — handles oklch (Tailwind 4) correctly
-  const imgData = await toPng(element, { pixelRatio: 2, backgroundColor: '#ffffff' })
+  const imgData = await toPng(element, { pixelRatio: 3, backgroundColor: '#ffffff' })
 
   // Load image to get pixel dimensions
   const img = new Image()
@@ -88,7 +88,6 @@ async function exportMessageToPdf(element: HTMLElement) {
   const pageH = pdf.internal.pageSize.getHeight()
   const margin = 15
   const contentW = pageW - margin * 2
-  const imgH = (img.height * contentW) / img.width
 
   // Header
   pdf.setFontSize(10)
@@ -99,18 +98,23 @@ async function exportMessageToPdf(element: HTMLElement) {
   pdf.setDrawColor(226, 232, 240)
   pdf.line(margin, 12, pageW - margin, 12)
 
+  // Display at 80% width centered — avoids chart pixelation from over-stretching
+  const displayW = contentW * 0.8
+  const displayH = (img.height * displayW) / img.width
+  const offsetX = margin + (contentW - displayW) / 2
+
   const startY = 18
-  let remaining = imgH
+  let remaining = displayH
 
   if (remaining <= pageH - startY - margin) {
-    pdf.addImage(imgData, 'PNG', margin, startY, contentW, imgH)
+    pdf.addImage(imgData, 'PNG', offsetX, startY, displayW, displayH)
   } else {
     // Multi-page: slice via canvas
     let srcY = 0
     let firstPage = true
     while (remaining > 0) {
       const sliceH = firstPage ? pageH - startY - margin : pageH - margin * 2
-      const sliceHPx = (sliceH * img.width) / contentW
+      const sliceHPx = (sliceH * img.width) / displayW
       const destY = firstPage ? startY : margin
 
       const sliceCanvas = document.createElement('canvas')
@@ -120,8 +124,8 @@ async function exportMessageToPdf(element: HTMLElement) {
       ctx.drawImage(img, 0, srcY, img.width, sliceCanvas.height, 0, 0, img.width, sliceCanvas.height)
 
       const sliceImg = sliceCanvas.toDataURL('image/png')
-      const sliceDisplayH = (sliceCanvas.height * contentW) / img.width
-      pdf.addImage(sliceImg, 'PNG', margin, destY, contentW, sliceDisplayH)
+      const sliceDisplayH = (sliceCanvas.height * displayW) / img.width
+      pdf.addImage(sliceImg, 'PNG', offsetX, destY, displayW, sliceDisplayH)
 
       srcY += sliceCanvas.height
       remaining -= sliceDisplayH
