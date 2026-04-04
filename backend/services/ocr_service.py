@@ -135,9 +135,20 @@ class OCRService:
         parts: List[str] = []
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages:
+                # Primary extraction: default layout
                 page_text = page.extract_text() or ""
                 if page_text:
                     parts.append(page_text)
+
+                # Secondary extraction: x_density layout to capture multi-column
+                # headers (e.g. "Fecha Emisión" on the right side of the page)
+                try:
+                    alt_text = page.extract_text(layout=True, x_density=7.25) or ""
+                    if alt_text and alt_text.strip() != page_text.strip():
+                        parts.append(alt_text)
+                except Exception:
+                    pass
+
                 # Include tables for structured data (amounts, quantities)
                 for table in page.extract_tables():
                     for row in table:
