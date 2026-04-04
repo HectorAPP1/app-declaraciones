@@ -313,6 +313,34 @@ REGLAS DE NORMALIZACIÓN DE PROVEEDOR
 3. Nunca mezcles formatos: o todo mayúsculas, o Title Case, no mezcles.
 
 ══════════════════════════════════════════════════════
+REGLAS PARA EL NÚMERO DE FACTURA
+══════════════════════════════════════════════════════
+El número de factura en Chile aparece como "Folio", "N°", "Nº", "Número" o simplemente
+como un número prominente en el encabezado del documento (ej: "14788", "Folio: 4638").
+Busca ese valor y devuélvelo como string sin ceros a la izquierda innecesarios.
+Si no aparece, devuelve null.
+
+══════════════════════════════════════════════════════
+REGLAS CRÍTICAS — ÍTEMS A INCLUIR
+══════════════════════════════════════════════════════
+SOLO incluye ítems que representen cantidades físicas de RESIDUOS transportados o dispuestos.
+
+INCLUIR:
+- Disposición de residuos / residuos industriales asimilables (unidad: TON o KG)
+- Retiro de residuos sólidos domiciliarios (unidad: TON)
+- Materiales reciclables (plástico, cartón, metal, etc.) (unidad: TON o KG)
+
+EXCLUIR (NO incluir en "items"):
+- Arriendo de tolva, contenedor, bins, compactador u otro equipo
+- Retiro de equipo / retiro de tolva / devolución de contenedor
+- Flete, transporte de equipo, despacho
+- Cargo de servicio, administración, otros cobros que no sean residuos
+- Cualquier ítem cuya unidad sea CONTENEDOR, RETIRO, UNIDAD, SERVICIO u otra no física
+
+En facturas domiciliarias: normalmente habrá UN SOLO ítem (la disposición de residuos).
+Si hay duda, prefiere incluir menos ítems antes que incluir servicios incorrectos.
+
+══════════════════════════════════════════════════════
 CATEGORÍAS DE RESIDUOS VÁLIDAS
 ══════════════════════════════════════════════════════
 Tipo domiciliario : {valid_domiciliary}
@@ -331,7 +359,7 @@ TEXTO DEL PDF
 
 Devuelve ÚNICAMENTE JSON válido (sin markdown, sin explicaciones):
 {{
-  "number": "número de factura como string",
+  "number": "número de folio de la factura como string, o null si no aparece",
   "provider": "nombre normalizado",
   "provider_rut": "RUT si aparece, null si no",
   "date": "YYYY-MM-DD",
