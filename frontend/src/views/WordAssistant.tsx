@@ -71,46 +71,24 @@ const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 // ─── PDF export ───────────────────────────────────────────────────────────────
 
 async function exportMessageToPdf(element: HTMLElement) {
-  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+  const [{ default: jsPDF }, { toPng }] = await Promise.all([
     import('jspdf'),
-    import('html2canvas'),
+    import('html-to-image'),
   ])
 
-  // html2canvas doesn't support oklch (Tailwind 4). Apply computed rgb colors via onclone.
-  function resolveColors(orig: Element, clone: Element) {
-    const cs = window.getComputedStyle(orig)
-    const el = clone as HTMLElement
-    el.style.color = cs.color
-    el.style.backgroundColor = cs.backgroundColor
-    el.style.borderColor = cs.borderColor
-    el.style.borderTopColor = cs.borderTopColor
-    el.style.borderRightColor = cs.borderRightColor
-    el.style.borderBottomColor = cs.borderBottomColor
-    el.style.borderLeftColor = cs.borderLeftColor
-  }
+  // html-to-image uses SVG foreignObject — handles oklch (Tailwind 4) correctly
+  const imgData = await toPng(element, { pixelRatio: 2, backgroundColor: '#ffffff' })
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    onclone: (_doc, clonedRoot) => {
-      const origNodes = [element, ...Array.from(element.querySelectorAll('*'))]
-      const cloneNodes = [clonedRoot, ...Array.from(clonedRoot.querySelectorAll('*'))]
-      origNodes.forEach((orig, i) => {
-        if (cloneNodes[i]) resolveColors(orig, cloneNodes[i])
-      })
-    },
-  })
+  // Load image to get pixel dimensions
+  const img = new Image()
+  await new Promise<void>(res => { img.onload = () => res(); img.src = imgData })
 
-  const imgData = canvas.toDataURL('image/png')
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-
   const pageW = pdf.internal.pageSize.getWidth()
   const pageH = pdf.internal.pageSize.getHeight()
   const margin = 15
   const contentW = pageW - margin * 2
-  const imgH = (canvas.height * contentW) / canvas.width
+  const imgH = (img.height * contentW) / img.width
 
   // Header
   pdf.setFontSize(10)
@@ -127,22 +105,22 @@ async function exportMessageToPdf(element: HTMLElement) {
   if (remaining <= pageH - startY - margin) {
     pdf.addImage(imgData, 'PNG', margin, startY, contentW, imgH)
   } else {
-    // Multi-page
+    // Multi-page: slice via canvas
     let srcY = 0
     let firstPage = true
     while (remaining > 0) {
       const sliceH = firstPage ? pageH - startY - margin : pageH - margin * 2
-      const sliceHPx = (sliceH * canvas.width) / contentW
+      const sliceHPx = (sliceH * img.width) / contentW
       const destY = firstPage ? startY : margin
 
       const sliceCanvas = document.createElement('canvas')
-      sliceCanvas.width = canvas.width
-      sliceCanvas.height = Math.min(sliceHPx, canvas.height - srcY)
+      sliceCanvas.width = img.width
+      sliceCanvas.height = Math.min(sliceHPx, img.height - srcY)
       const ctx = sliceCanvas.getContext('2d')!
-      ctx.drawImage(canvas, 0, srcY, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height)
+      ctx.drawImage(img, 0, srcY, img.width, sliceCanvas.height, 0, 0, img.width, sliceCanvas.height)
 
       const sliceImg = sliceCanvas.toDataURL('image/png')
-      const sliceDisplayH = (sliceCanvas.height * contentW) / canvas.width
+      const sliceDisplayH = (sliceCanvas.height * contentW) / img.width
       pdf.addImage(sliceImg, 'PNG', margin, destY, contentW, sliceDisplayH)
 
       srcY += sliceCanvas.height
