@@ -191,7 +191,7 @@ TOOLS: List[Dict[str, Any]] = [
 
 class AIService:
     OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-    DEFAULT_MODEL = "meta-llama/llama-4-maverick:free"
+    DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
     MAX_TOOL_ROUNDS = 4
 
     def __init__(self, invoice_service) -> None:
