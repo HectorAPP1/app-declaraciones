@@ -356,7 +356,21 @@ Ejemplos de lo que INCLUIR:
 En facturas DOMICILIARIAS habrá típicamente UN SOLO ítem de residuos.
 
 ══════════════════════════════════════════════════════
-REGLA 3 — MONTOS EN PESOS CHILENOS (CLP)
+REGLA 3 — CUANDO HAY CERTIFICADO DE RECICLAJE
+══════════════════════════════════════════════════════
+Si el texto incluye una sección "--- CERTIFICADO DE RECICLAJE ---":
+  - Los ÍTEMS deben extraerse de la TABLA del certificado (columnas: RESIDUO, KG)
+  - NO uses líneas de la factura como ítems (la factura suele tener unidad UN, SERVICIO, etc.)
+  - Los TOTALES (subtotal, IVA, total) siguen viniendo de la factura
+
+Ejemplo de tabla en certificado:
+  MEZCLA DE PAPELES Y CARTONES | 325 | RECICLAJE → item: carton, 325 KG
+  MEZCLA DE PLASTICOS | 286 | RECICLAJE         → item: plastico, 286 KG
+  VIDRIO | 1.149 | RECICLAJE                     → item: vidrio, 1149 KG
+  (nota: "1.149" = 1149 porque el punto es separador de miles en Chile)
+
+══════════════════════════════════════════════════════
+REGLA 4 — MONTOS EN PESOS CHILENOS (CLP)
 ══════════════════════════════════════════════════════
 En Chile el punto (.) es separador de miles y la coma (,) es decimal.
 Ejemplo: "328.100" = trescientos veintiocho mil cien = 328100 en JSON.
