@@ -2,27 +2,51 @@ name: Deploy backend to PythonAnywhere
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
+    branches: [main]
+    paths: ['backend/**']
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      PA_USER: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+      PA_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
 
     steps:
-      - name: Git pull via SSH
+      - uses: actions/checkout@v4
+
+      - name: Upload backend files via Files API
         run: |
-          echo "${{ secrets.PYTHONANYWHERE_SSH_KEY }}" > /tmp/pa_key
-          chmod 600 /tmp/pa_key
-          ssh -i /tmp/pa_key \
-              -o StrictHostKeyChecking=no \
-              ${{ secrets.PYTHONANYWHERE_USERNAME }}@ssh.pythonanywhere.com \
-              "cd ~/app-declaraciones && git pull origin main"
+          upload() {
+            local src="$1"
+            echo "→ $src"
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+              "https://www.pythonanywhere.com/api/v0/user/$PA_USER/files/path/home/$PA_USER/app-declaraciones/$src" \
+              -H "Authorization: Token $PA_TOKEN" \
+              -F "content=@$src")
+            if [ "$HTTP" -lt 200 ] || [ "$HTTP" -gt 299 ]; then
+              echo "ERROR: HTTP $HTTP al subir $src"
+              exit 1
+            fi
+            echo "  OK ($HTTP)"
+          }
+
+          upload backend/app.py
+          upload backend/requirements.txt
+          upload backend/services/ai_service.py
+          upload backend/services/invoice_service.py
+          upload backend/repositories/local_json_repo.py
+          upload backend/validators/invoice_validator.py
+          upload backend/storage/file_manager.py
 
       - name: Reload webapp
         run: |
-          curl -s -f -X POST \
-            "https://www.pythonanywhere.com/api/v0/user/${{ secrets.PYTHONANYWHERE_USERNAME }}/webapps/${{ secrets.PYTHONANYWHERE_USERNAME }}.pythonanywhere.com/reload/" \
-            -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}"
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "https://www.pythonanywhere.com/api/v0/user/$PA_USER/webapps/$PA_USER.pythonanywhere.com/reload/" \
+            -H "Authorization: Token $PA_TOKEN")
+          echo "Reload HTTP: $HTTP"
+          if [ "$HTTP" -lt 200 ] || [ "$HTTP" -gt 299 ]; then
+            echo "ERROR: reload falló con HTTP $HTTP"
+            exit 1
+          fi
+          echo "Backend desplegado y recargado ✓"
