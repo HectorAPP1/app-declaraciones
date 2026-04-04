@@ -85,23 +85,24 @@ En dev local no se necesita — Vite proxea `/api` → `http://127.0.0.1:5000` a
 
 | Variable | Descripción |
 |---|---|
-| `GROQ_API_KEY` | API key de Groq — requerida para el Asistente SINADER |
-| `GROQ_MODEL` | Opcional — modelo a usar. Default: `llama-3.3-70b-versatile` |
+| `OPENROUTER_API_KEY` | API key de OpenRouter — requerida para el Asistente SINADER |
+| `OPENROUTER_MODEL` | Opcional — modelo a usar. Default: `meta-llama/llama-4-scout:free` |
 
 Configurar en el archivo WSGI de PythonAnywhere:
 ```python
 import os
-os.environ['GROQ_API_KEY'] = 'tu_api_key_aqui'
+os.environ['OPENROUTER_API_KEY'] = 'tu_api_key_aqui'
 ```
 
 ## Asistente SINADER (AI)
 
 - **Servicio:** `backend/services/ai_service.py`
-- **Proveedor:** Groq API (OpenAI-compatible)
-- **Modelo:** `llama-3.3-70b-versatile` (free tier: ~14,400 req/día)
-- **API URL:** `https://api.groq.com/openai/v1/chat/completions`
+- **Proveedor:** OpenRouter (proxy hacia modelos gratuitos)
+- **Modelo:** `meta-llama/llama-4-scout:free` (gratis, tool calling completo)
+- **API URL:** `https://openrouter.ai/api/v1/chat/completions`
 - **Herramientas (tool calling):** `get_invoice_summary`, `get_monthly_series`, `get_category_breakdown`, `get_pending_sinader`
-- **API key:** se obtiene en [console.groq.com](https://console.groq.com)
+- **API key:** se obtiene en [openrouter.ai/keys](https://openrouter.ai/keys)
+- **Nota:** Usar siempre modelos con sufijo `:free`. Groq (403) y Gemini free tier (quota 0 en cuentas Workspace) están descartados.
 
 ## Tarea pendiente — CI/CD backend
 
