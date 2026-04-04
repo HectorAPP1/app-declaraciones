@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { SparklesIcon, PaperAirplaneIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { SparklesIcon, PaperAirplaneIcon, ExclamationTriangleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -67,6 +67,73 @@ const QUICK_ACTIONS = [
 // ─── Chart colors ─────────────────────────────────────────────────────────────
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899']
+
+// ─── PDF export ───────────────────────────────────────────────────────────────
+
+async function exportMessageToPdf(element: HTMLElement) {
+  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas'),
+  ])
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+  })
+
+  const imgData = canvas.toDataURL('image/png')
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const pageW = pdf.internal.pageSize.getWidth()
+  const pageH = pdf.internal.pageSize.getHeight()
+  const margin = 15
+  const contentW = pageW - margin * 2
+  const imgH = (canvas.height * contentW) / canvas.width
+
+  // Header
+  pdf.setFontSize(10)
+  pdf.setTextColor(99, 102, 241)
+  pdf.text('EcoMetrics · Asistente SINADER', margin, 10)
+  pdf.setTextColor(148, 163, 184)
+  pdf.text(new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }), pageW - margin, 10, { align: 'right' })
+  pdf.setDrawColor(226, 232, 240)
+  pdf.line(margin, 12, pageW - margin, 12)
+
+  const startY = 18
+  let remaining = imgH
+
+  if (remaining <= pageH - startY - margin) {
+    pdf.addImage(imgData, 'PNG', margin, startY, contentW, imgH)
+  } else {
+    // Multi-page
+    let srcY = 0
+    let firstPage = true
+    while (remaining > 0) {
+      const sliceH = firstPage ? pageH - startY - margin : pageH - margin * 2
+      const sliceHPx = (sliceH * canvas.width) / contentW
+      const destY = firstPage ? startY : margin
+
+      const sliceCanvas = document.createElement('canvas')
+      sliceCanvas.width = canvas.width
+      sliceCanvas.height = Math.min(sliceHPx, canvas.height - srcY)
+      const ctx = sliceCanvas.getContext('2d')!
+      ctx.drawImage(canvas, 0, srcY, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height)
+
+      const sliceImg = sliceCanvas.toDataURL('image/png')
+      const sliceDisplayH = (sliceCanvas.height * contentW) / canvas.width
+      pdf.addImage(sliceImg, 'PNG', margin, destY, contentW, sliceDisplayH)
+
+      srcY += sliceCanvas.height
+      remaining -= sliceDisplayH
+      firstPage = false
+      if (remaining > 0) pdf.addPage()
+    }
+  }
+
+  pdf.save(`informe-sinader-${new Date().toISOString().slice(0, 10)}.pdf`)
+}
 
 // ─── Chart renderer ───────────────────────────────────────────────────────────
 
@@ -362,6 +429,54 @@ Consulto tus datos reales de facturas para ayudarte a:
 ¿En qué te ayudo hoy?`,
 }
 
+// ─── Assistant bubble ─────────────────────────────────────────────────────────
+
+function AssistantBubble({ msg }: { msg: DisplayMessage }) {
+  const [exporting, setExporting] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  const handleExport = useCallback(async () => {
+    if (!contentRef.current) return
+    setExporting(true)
+    try {
+      await exportMessageToPdf(contentRef.current)
+    } finally {
+      setExporting(false)
+    }
+  }, [])
+
+  if (msg.loading) return <TypingDots />
+  if (msg.error) return (
+    <div className="flex items-start gap-2">
+      <ExclamationTriangleIcon className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+      <p className="text-sm text-red-700">{msg.content}</p>
+    </div>
+  )
+
+  return (
+    <div>
+      <div ref={contentRef} className="p-1">
+        <FormattedText text={msg.content} />
+        {msg.charts?.map((chart, ci) => (
+          <ChartRenderer key={ci} spec={chart} />
+        ))}
+      </div>
+      {msg.id !== 'welcome' && (
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+          >
+            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+            {exporting ? 'Generando PDF…' : 'Descargar PDF'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function WordAssistantView() {
@@ -489,21 +604,7 @@ export default function WordAssistantView() {
                       msg.error ? 'border-red-200 bg-red-50' : 'border-slate-100'
                     }`}
                   >
-                    {msg.loading ? (
-                      <TypingDots />
-                    ) : msg.error ? (
-                      <div className="flex items-start gap-2">
-                        <ExclamationTriangleIcon className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                        <p className="text-sm text-red-700">{msg.content}</p>
-                      </div>
-                    ) : (
-                      <>
-                        <FormattedText text={msg.content} />
-                        {msg.charts?.map((chart, ci) => (
-                          <ChartRenderer key={ci} spec={chart} />
-                        ))}
-                      </>
-                    )}
+                    <AssistantBubble msg={msg} />
                   </div>
                 )}
               </div>
