@@ -95,4 +95,34 @@ export const api = {
 
   health: (): Promise<{ status: string }> =>
     req<{ status: string }>('/health'),
+
+  // ─── AI Chat ─────────────────────────────────────────────────────────────────
+
+  /** Send a conversation to the SINADER AI assistant */
+  chat: (messages: ChatMessage[]): Promise<ChatResponse> =>
+    req<ChatResponse>('/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+}
+
+// ─── Chat types ───────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChartSpec {
+  type: 'bar' | 'line' | 'pie' | 'multibar'
+  title: string
+  data: Record<string, number | string>[]
+  xKey: string
+  yKey?: string
+  keys?: string[]
+  color?: string
+  colors?: string[]
+  unit?: string
+}
+
+export interface ChatResponse {
+  content: string
+  charts: ChartSpec[]
 }

@@ -4,6 +4,7 @@ from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
 from repositories.local_json_repo import LocalInvoiceRepository
+from services.ai_service import AIService
 from services.invoice_service import InvoiceService
 from storage.file_manager import FileManager
 
@@ -21,6 +22,7 @@ def create_app() -> Flask:
     repository = LocalInvoiceRepository(data_dir / "invoices.json")
     file_manager = FileManager(documents_dir)
     service = InvoiceService(repository, file_manager)
+    ai_service = AIService(service)
 
     @app.errorhandler(ValueError)
     def handle_value_error(error: ValueError):
@@ -86,6 +88,22 @@ def create_app() -> Flask:
         year = request.args.get("year")
         data = service.get_analytics(year)
         return jsonify(data), 200
+
+    @app.route("/api/chat", methods=["POST"])
+    def chat() -> tuple:
+        data = request.get_json(force=True)
+        messages = data.get("messages", [])
+        if not isinstance(messages, list) or not messages:
+            return jsonify({"error": "Se requiere una lista de mensajes"}), 400
+        for msg in messages:
+            if (
+                not isinstance(msg, dict)
+                or msg.get("role") not in ("user", "assistant")
+                or not isinstance(msg.get("content"), str)
+            ):
+                return jsonify({"error": "Formato de mensaje inválido"}), 400
+        result = ai_service.chat(messages)
+        return jsonify(result), 200
 
     return app
 
