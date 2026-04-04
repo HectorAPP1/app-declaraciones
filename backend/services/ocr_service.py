@@ -88,15 +88,21 @@ class OCRService:
                 "¿Es un PDF escaneado sin capa de texto?"
             )
 
-        # If a certificate PDF was provided, append its text as extra context
+        cert_text: str | None = None
         if certificate_bytes:
-            cert_text = self._extract_text(certificate_bytes)
-            if cert_text.strip():
-                text += "\n\n--- CERTIFICADO DE RECICLAJE ---\n" + cert_text
+            extracted = self._extract_text(certificate_bytes)
+            if extracted.strip():
+                cert_text = extracted
 
         context = self._build_context()
         hints   = self._load_hints()
-        result  = self._call_ai(text, context, hints, invoice_type=invoice_type)
+        result  = self._call_ai(
+            text,
+            context,
+            hints,
+            invoice_type=invoice_type,
+            cert_text=cert_text,
+        )
         return result
 
     def learn_correction(self, raw: Dict[str, Any], corrected: Dict[str, Any]) -> None:
@@ -226,6 +232,7 @@ class OCRService:
         context: Dict[str, Any],
         hints: Dict[str, Any],
         invoice_type: str | None = None,
+        cert_text: str | None = None,
     ) -> Dict[str, Any]:
 
         # ── Sección de proveedores conocidos ──────────────────────────────
@@ -268,6 +275,16 @@ class OCRService:
         valid_recyclable   = ", ".join(RECYCLABLE_RESIDUES.keys())
         valid_domiciliary  = ", ".join(DOMICILIARY_RESIDUES.keys())
         date_range = context.get("date_range", {})
+
+        if cert_text:
+            cert_section = (
+                "CERTIFICADO DE RECICLAJE ADJUNTO\n"
+                "══════════════════════════════════════════════════════\n"
+                f"{cert_text[:3000]}\n"
+                "══════════════════════════════════════════════════════\n"
+            )
+        else:
+            cert_section = ""
 
         # Type hint from user selection
         if invoice_type == "recyclable":
@@ -393,10 +410,11 @@ Ejemplos: "HDPE", "PET", "polietileno" → plastico | "fierro", "acero", "alumin
           "kraft", "corrugado" → carton | "tetra pak" → tetrapak
 
 ══════════════════════════════════════════════════════
-TEXTO DEL PDF
+TEXTO DE LA FACTURA
 ══════════════════════════════════════════════════════
-{text[:6000]}
+{text[:4500]}
 ══════════════════════════════════════════════════════
+{cert_section}══════════════════════════════════════════════════════
 
 Devuelve ÚNICAMENTE JSON válido (sin markdown, sin explicaciones):
 {{
