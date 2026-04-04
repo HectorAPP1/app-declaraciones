@@ -7,10 +7,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.request
+import urllib.error
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-
-import requests
 
 # ---------------------------------------------------------------------------
 # Constantes de dominio
@@ -224,12 +224,10 @@ class AIService:
         for _ in range(self.MAX_TOOL_ROUNDS):
             try:
                 response_data = self._call_api(api_messages)
-            except requests.Timeout:
+            except TimeoutError:
                 return {"content": "⏱️ La solicitud tardó demasiado. Intenta nuevamente.", "charts": []}
-            except requests.RequestException as exc:
-                return {"content": f"❌ Error de conexión con el servicio de IA: {exc}", "charts": []}
             except Exception as exc:
-                return {"content": f"❌ Error inesperado: {exc}", "charts": []}
+                return {"content": f"❌ Error al conectar con el servicio de IA: {exc}", "charts": []}
 
             choices = response_data.get("choices") or []
             if not choices:
@@ -275,26 +273,32 @@ class AIService:
     # -----------------------------------------------------------------------
 
     def _call_api(self, messages: List[Dict]) -> Dict:
-        response = requests.post(
+        payload = json.dumps({
+            "model": self.model,
+            "messages": messages,
+            "tools": TOOLS,
+            "tool_choice": "auto",
+            "max_tokens": 2048,
+            "temperature": 0.2,
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
             self.OPENROUTER_API_URL,
+            data=payload,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://app-declaraciones.vercel.app",
                 "X-Title": "EcoMetrics SINADER Assistant",
             },
-            json={
-                "model": self.model,
-                "messages": messages,
-                "tools": TOOLS,
-                "tool_choice": "auto",
-                "max_tokens": 2048,
-                "temperature": 0.2,
-            },
-            timeout=90,
+            method="POST",
         )
-        response.raise_for_status()
-        return response.json()
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise Exception(f"OpenRouter HTTP {exc.code}: {body}")
 
     # -----------------------------------------------------------------------
     # Tool dispatcher
