@@ -13,6 +13,14 @@ def create_app() -> Flask:
     app = Flask(__name__)
     CORS(app)
 
+    @app.after_request
+    def add_cors(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+
     base_dir = Path(__file__).resolve().parent
     data_dir = base_dir / "data"
     documents_dir = data_dir / "documents"
@@ -89,8 +97,10 @@ def create_app() -> Flask:
         data = service.get_analytics(year)
         return jsonify(data), 200
 
-    @app.route("/api/chat", methods=["POST"])
+    @app.route("/api/chat", methods=["POST", "OPTIONS"])
     def chat() -> tuple:
+        if request.method == "OPTIONS":
+            return "", 204
         data = request.get_json(force=True)
         messages = data.get("messages", [])
         if not isinstance(messages, list) or not messages:
