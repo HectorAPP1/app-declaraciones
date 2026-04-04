@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
+import ImportPDFModal from './ImportPDFModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,8 +87,9 @@ export default function InvoiceModal({ isOpen, onClose, editInvoice }: {
   onClose: () => void
   editInvoice?: any
 }) {
-  const [step, setStep] = useState(1)
-  const [form, setForm] = useState<FormData>(EMPTY_FORM)
+  const [step, setStep]           = useState(1)
+  const [form, setForm]           = useState<FormData>(EMPTY_FORM)
+  const [showImport, setShowImport] = useState(false)
 
   // Populate form when opening in edit mode
   useEffect(() => {
@@ -210,8 +212,26 @@ export default function InvoiceModal({ isOpen, onClose, editInvoice }: {
       >
         {/* ── Header ── */}
         <DialogHeader className="px-8 pt-7 pb-0">
-          <DialogTitle className="text-xl font-bold text-slate-900">{editInvoice ? 'Editar factura' : 'Registrar factura'}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold text-slate-900">{editInvoice ? 'Editar factura' : 'Registrar factura'}</DialogTitle>
+            {!editInvoice && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={() => setShowImport(true)}
+              >
+                Importar desde PDF
+              </Button>
+            )}
+          </div>
         </DialogHeader>
+
+        <ImportPDFModal
+          isOpen={showImport}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => { setShowImport(false); handleClose(); window.location.reload() }}
+        />
 
         {/* ── Step indicators ── */}
         <div className="flex items-center px-8 pt-5 pb-1">

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
@@ -6,6 +7,7 @@ from werkzeug.exceptions import HTTPException
 from repositories.local_json_repo import LocalInvoiceRepository
 from services.ai_service import AIService
 from services.invoice_service import InvoiceService
+from services.ocr_service import OCRService
 from storage.file_manager import FileManager
 
 
@@ -30,7 +32,12 @@ def create_app() -> Flask:
     repository = LocalInvoiceRepository(data_dir / "invoices.json")
     file_manager = FileManager(documents_dir)
     service = InvoiceService(repository, file_manager)
-    ai_service = AIService(service)
+    ai_service  = AIService(service)
+    ocr_service = OCRService(
+        service,
+        api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+        model=os.environ.get("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"),
+    )
 
     @app.errorhandler(ValueError)
     def handle_value_error(error: ValueError):
@@ -96,6 +103,29 @@ def create_app() -> Flask:
         year = request.args.get("year")
         data = service.get_analytics(year)
         return jsonify(data), 200
+
+    @app.route("/api/invoices/parse-pdf", methods=["POST"])
+    def parse_pdf_invoice() -> tuple:
+        if "file" not in request.files:
+            return jsonify({"error": "Se requiere un archivo PDF"}), 400
+        file = request.files["file"]
+        if not file.filename or not file.filename.lower().endswith(".pdf"):
+            return jsonify({"error": "El archivo debe ser un PDF"}), 400
+        try:
+            pdf_bytes = file.read()
+            result = ocr_service.parse_pdf(pdf_bytes)
+            return jsonify(result), 200
+        except (RuntimeError, ValueError) as e:
+            return jsonify({"error": str(e)}), 422
+
+    @app.route("/api/invoices/ocr-correction", methods=["POST"])
+    def save_ocr_correction() -> tuple:
+        data = request.get_json(force=True)
+        raw       = data.get("raw", {})
+        corrected = data.get("corrected", {})
+        if raw and corrected:
+            ocr_service.learn_correction(raw, corrected)
+        return jsonify({"ok": True}), 200
 
     @app.route("/api/chat", methods=["POST", "OPTIONS"])
     def chat() -> tuple:

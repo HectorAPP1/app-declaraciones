@@ -91,6 +91,26 @@ export const api = {
     return req<AnalyticsData>(`/analytics${qs}`)
   },
 
+  // ─── OCR ────────────────────────────────────────────────────────────────────
+
+  /** Parse a PDF invoice using AI — returns extracted + normalized data */
+  parsePdf: (file: File): Promise<OcrResult> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return req<OcrResult>('/invoices/parse-pdf', {
+      method:  'POST',
+      headers: {},
+      body:    fd,
+    })
+  },
+
+  /** Save user corrections so future OCR learns from them */
+  saveOcrCorrection: (raw: OcrResult, corrected: OcrResult): Promise<void> =>
+    req<void>('/invoices/ocr-correction', {
+      method: 'POST',
+      body:   JSON.stringify({ raw, corrected }),
+    }),
+
   // ─── Health ─────────────────────────────────────────────────────────────────
 
   health: (): Promise<{ status: string }> =>
@@ -101,6 +121,29 @@ export const api = {
   /** Send a conversation to the SINADER AI assistant */
   chat: (messages: ChatMessage[]): Promise<ChatResponse> =>
     req<ChatResponse>('/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+}
+
+// ─── OCR types ────────────────────────────────────────────────────────────────
+
+export interface OcrItem {
+  description: string
+  residue_category: string
+  unit: 'TON' | 'KG'
+  quantity: number
+  amount: number
+}
+
+export interface OcrResult {
+  number: string
+  provider: string
+  provider_rut: string | null
+  date: string
+  type: 'domiciliary' | 'recyclable'
+  currency: 'CLP' | 'UF'
+  items: OcrItem[]
+  totals: { subtotal: number; tax: number; total: number }
+  date_confidence: 'high' | 'medium' | 'low'
+  date_notes: string | null
 }
 
 // ─── Chat types ───────────────────────────────────────────────────────────────
