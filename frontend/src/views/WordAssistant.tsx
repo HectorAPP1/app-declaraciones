@@ -76,11 +76,31 @@ async function exportMessageToPdf(element: HTMLElement) {
     import('html2canvas'),
   ])
 
+  // html2canvas doesn't support oklch (Tailwind 4). Apply computed rgb colors via onclone.
+  function resolveColors(orig: Element, clone: Element) {
+    const cs = window.getComputedStyle(orig)
+    const el = clone as HTMLElement
+    el.style.color = cs.color
+    el.style.backgroundColor = cs.backgroundColor
+    el.style.borderColor = cs.borderColor
+    el.style.borderTopColor = cs.borderTopColor
+    el.style.borderRightColor = cs.borderRightColor
+    el.style.borderBottomColor = cs.borderBottomColor
+    el.style.borderLeftColor = cs.borderLeftColor
+  }
+
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
     logging: false,
+    onclone: (_doc, clonedRoot) => {
+      const origNodes = [element, ...Array.from(element.querySelectorAll('*'))]
+      const cloneNodes = [clonedRoot, ...Array.from(clonedRoot.querySelectorAll('*'))]
+      origNodes.forEach((orig, i) => {
+        if (cloneNodes[i]) resolveColors(orig, cloneNodes[i])
+      })
+    },
   })
 
   const imgData = canvas.toDataURL('image/png')
