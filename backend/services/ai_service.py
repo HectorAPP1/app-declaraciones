@@ -1,6 +1,6 @@
 """
 AI Assistant — EcoMetrics SINADER Assistant
-Usa OpenRouter API almacenada de forma segura en el backend (nunca expuesta al frontend).
+Usa Google Gemini API almacenada de forma segura en el backend (nunca expuesta al frontend).
 """
 from __future__ import annotations
 
@@ -190,14 +190,14 @@ TOOLS: List[Dict[str, Any]] = [
 
 
 class AIService:
-    OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-    DEFAULT_MODEL = "openrouter/auto"
+    GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    DEFAULT_MODEL = "gemini-2.0-flash"
     MAX_TOOL_ROUNDS = 4
 
     def __init__(self, invoice_service) -> None:
         self.invoice_service = invoice_service
-        self.api_key = os.environ.get("OPENROUTER_API_KEY", "")
-        self.model = os.environ.get("OPENROUTER_MODEL", self.DEFAULT_MODEL)
+        self.api_key = os.environ.get("GEMINI_API_KEY", "")
+        self.model = os.environ.get("GEMINI_MODEL", self.DEFAULT_MODEL)
 
     # -----------------------------------------------------------------------
     # Public API
@@ -212,7 +212,7 @@ class AIService:
             return {
                 "content": (
                     "⚠️ El servicio de IA no está configurado. "
-                    "El administrador debe definir la variable de entorno `OPENROUTER_API_KEY` en el servidor."
+                    "El administrador debe definir la variable de entorno `GEMINI_API_KEY` en el servidor."
                 ),
                 "charts": [],
             }
@@ -269,7 +269,7 @@ class AIService:
         }
 
     # -----------------------------------------------------------------------
-    # OpenRouter API call
+    # Gemini API call (OpenAI-compatible endpoint)
     # -----------------------------------------------------------------------
 
     def _call_api(self, messages: List[Dict]) -> Dict:
@@ -283,13 +283,11 @@ class AIService:
         }).encode("utf-8")
 
         req = urllib.request.Request(
-            self.OPENROUTER_API_URL,
+            self.GEMINI_API_URL,
             data=payload,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://app-declaraciones.vercel.app",
-                "X-Title": "EcoMetrics SINADER Assistant",
             },
             method="POST",
         )
@@ -298,7 +296,7 @@ class AIService:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            raise Exception(f"OpenRouter HTTP {exc.code}: {body}")
+            raise Exception(f"Gemini HTTP {exc.code}: {body}")
 
     # -----------------------------------------------------------------------
     # Tool dispatcher

@@ -71,13 +71,37 @@ Base URL en producción: `https://sirhector.pythonanywhere.com/api`
 3. Si cambiaron deps: `cd backend && source .venv/bin/activate && pip install -r requirements.txt`
 4. Web → "Reload SirHector.pythonanywhere.com"
 
-## Variable de entorno en Vercel
+## Variables de entorno
+
+### Vercel (frontend)
 
 | Variable | Valor |
 |---|---|
 | `VITE_API_URL` | `https://sirhector.pythonanywhere.com/api` |
 
 En dev local no se necesita — Vite proxea `/api` → `http://127.0.0.1:5000` automáticamente.
+
+### PythonAnywhere (backend)
+
+| Variable | Descripción |
+|---|---|
+| `GEMINI_API_KEY` | API key de Google AI Studio — requerida para el Asistente SINADER |
+| `GEMINI_MODEL` | Opcional — modelo a usar. Default: `gemini-2.0-flash` |
+
+Configurar en PythonAnywhere → Web → tu app → sección **"Environment variables"**, o en el archivo WSGI:
+```python
+import os
+os.environ['GEMINI_API_KEY'] = 'tu_api_key_aqui'
+```
+
+## Asistente SINADER (AI)
+
+- **Servicio:** `backend/services/ai_service.py`
+- **Proveedor:** Google Gemini API (endpoint OpenAI-compatible)
+- **Modelo:** `gemini-2.0-flash` (free tier: 1,500 req/día)
+- **API URL:** `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
+- **Herramientas (tool calling):** `get_invoice_summary`, `get_monthly_series`, `get_category_breakdown`, `get_pending_sinader`
+- **API key:** se obtiene en [aistudio.google.com](https://aistudio.google.com) → Get API key
 
 ## Tarea pendiente — CI/CD backend
 
