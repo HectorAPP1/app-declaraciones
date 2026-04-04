@@ -1,6 +1,6 @@
 """
 AI Assistant — EcoMetrics SINADER Assistant
-Usa Google Gemini API almacenada de forma segura en el backend (nunca expuesta al frontend).
+Usa Groq API almacenada de forma segura en el backend (nunca expuesta al frontend).
 """
 from __future__ import annotations
 
@@ -190,14 +190,14 @@ TOOLS: List[Dict[str, Any]] = [
 
 
 class AIService:
-    GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+    DEFAULT_MODEL = "llama-3.3-70b-versatile"
     MAX_TOOL_ROUNDS = 4
 
     def __init__(self, invoice_service) -> None:
         self.invoice_service = invoice_service
-        self.api_key = os.environ.get("GEMINI_API_KEY", "")
-        self.model = os.environ.get("GEMINI_MODEL", self.DEFAULT_MODEL)
+        self.api_key = os.environ.get("GROQ_API_KEY", "")
+        self.model = os.environ.get("GROQ_MODEL", self.DEFAULT_MODEL)
 
     # -----------------------------------------------------------------------
     # Public API
@@ -212,7 +212,7 @@ class AIService:
             return {
                 "content": (
                     "⚠️ El servicio de IA no está configurado. "
-                    "El administrador debe definir la variable de entorno `GEMINI_API_KEY` en el servidor."
+                    "El administrador debe definir la variable de entorno `GROQ_API_KEY` en el servidor."
                 ),
                 "charts": [],
             }
@@ -269,7 +269,7 @@ class AIService:
         }
 
     # -----------------------------------------------------------------------
-    # Gemini API call (OpenAI-compatible endpoint)
+    # Groq API call (OpenAI-compatible endpoint)
     # -----------------------------------------------------------------------
 
     def _call_api(self, messages: List[Dict]) -> Dict:
@@ -283,7 +283,7 @@ class AIService:
         }).encode("utf-8")
 
         req = urllib.request.Request(
-            self.GEMINI_API_URL,
+            self.GROQ_API_URL,
             data=payload,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -296,7 +296,7 @@ class AIService:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            raise Exception(f"Gemini HTTP {exc.code}: {body}")
+            raise Exception(f"Groq HTTP {exc.code}: {body}")
 
     # -----------------------------------------------------------------------
     # Tool dispatcher

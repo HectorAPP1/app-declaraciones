@@ -85,23 +85,23 @@ En dev local no se necesita — Vite proxea `/api` → `http://127.0.0.1:5000` a
 
 | Variable | Descripción |
 |---|---|
-| `GEMINI_API_KEY` | API key de Google AI Studio — requerida para el Asistente SINADER |
-| `GEMINI_MODEL` | Opcional — modelo a usar. Default: `gemini-2.0-flash` |
+| `GROQ_API_KEY` | API key de Groq — requerida para el Asistente SINADER |
+| `GROQ_MODEL` | Opcional — modelo a usar. Default: `llama-3.3-70b-versatile` |
 
-Configurar en PythonAnywhere → Web → tu app → sección **"Environment variables"**, o en el archivo WSGI:
+Configurar en el archivo WSGI de PythonAnywhere:
 ```python
 import os
-os.environ['GEMINI_API_KEY'] = 'tu_api_key_aqui'
+os.environ['GROQ_API_KEY'] = 'tu_api_key_aqui'
 ```
 
 ## Asistente SINADER (AI)
 
 - **Servicio:** `backend/services/ai_service.py`
-- **Proveedor:** Google Gemini API (endpoint OpenAI-compatible)
-- **Modelo:** `gemini-2.0-flash` (free tier: 1,500 req/día)
-- **API URL:** `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
+- **Proveedor:** Groq API (OpenAI-compatible)
+- **Modelo:** `llama-3.3-70b-versatile` (free tier: ~14,400 req/día)
+- **API URL:** `https://api.groq.com/openai/v1/chat/completions`
 - **Herramientas (tool calling):** `get_invoice_summary`, `get_monthly_series`, `get_category_breakdown`, `get_pending_sinader`
-- **API key:** se obtiene en [aistudio.google.com](https://aistudio.google.com) → Get API key
+- **API key:** se obtiene en [console.groq.com](https://console.groq.com)
 
 ## Tarea pendiente — CI/CD backend
 
